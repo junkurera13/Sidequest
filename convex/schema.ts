@@ -34,5 +34,10 @@ export default defineSchema({
     onVacation: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     memoryUpdatedAt: v.optional(v.number()),
+    // Set when a user signs up through the /signup form (vs. first-touch
+    // via texting the agent directly). assignedPhone is the Photon
+    // pool number we deep-link them to.
+    signedUpAt: v.optional(v.number()),
+    assignedPhone: v.optional(v.string()),
   }).index("by_phone", ["phone"]),
 });

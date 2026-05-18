@@ -1,4 +1,7 @@
+import { ConvexHttpClient } from "convex/browser";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+
+import { upsertUserByPhone } from "@/lib/convexFunctions";
 
 type PhotonUserResponse = {
   succeed?: boolean;
@@ -6,6 +9,17 @@ type PhotonUserResponse = {
     assignedPhoneNumber?: string;
   };
 };
+
+const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+
+function countryFromParsedPhone(region: string | undefined) {
+  if (!region) return undefined;
+  try {
+    return COUNTRY_NAMES.of(region) ?? region;
+  } catch {
+    return region;
+  }
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -32,8 +46,12 @@ export async function POST(request: Request) {
     );
   }
 
+  const e164 = parsed.format("E.164");
+  const country = countryFromParsedPhone(parsed.country);
+
   const projectId = process.env.PHOTON_PROJECT_ID;
   const projectSecret = process.env.PHOTON_PROJECT_SECRET;
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
   if (!projectId || !projectSecret) {
     console.error("missing PHOTON_PROJECT_ID or PHOTON_PROJECT_SECRET");
@@ -57,7 +75,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           type: "shared",
-          phoneNumber: parsed.format("E.164"),
+          phoneNumber: e164,
         }),
       },
     );
@@ -88,6 +106,24 @@ export async function POST(request: Request) {
       { error: "messaging service returned an unexpected response." },
       { status: 502 },
     );
+  }
+
+  // Create / update the Convex user record. Best-effort: if it fails the
+  // user can still text the agent and we'll create them on first message.
+  if (convexUrl) {
+    try {
+      const convex = new ConvexHttpClient(convexUrl);
+      await convex.mutation(upsertUserByPhone, {
+        phone: e164,
+        country,
+        assignedPhone: assigned,
+        signedUpAt: Date.now(),
+      });
+    } catch (cause) {
+      console.error("convex upsert during signup failed:", cause);
+    }
+  } else {
+    console.error("missing NEXT_PUBLIC_CONVEX_URL — skipping convex upsert");
   }
 
   return Response.json({ assignedPhone: assigned });

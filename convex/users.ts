@@ -13,7 +13,12 @@ export type UserMemory = {
 };
 
 export const upsertByPhone = mutationGeneric({
-  args: { phone: v.string(), country: v.optional(v.string()) },
+  args: {
+    phone: v.string(),
+    country: v.optional(v.string()),
+    assignedPhone: v.optional(v.string()),
+    signedUpAt: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
@@ -27,6 +32,14 @@ export const upsertByPhone = mutationGeneric({
       }
       if (!existing.state) {
         patch.state = "idle";
+      }
+      if (args.assignedPhone && !existing.assignedPhone) {
+        patch.assignedPhone = args.assignedPhone;
+      }
+      // Only set signedUpAt the first time — don't overwrite the original
+      // signup timestamp.
+      if (args.signedUpAt && !existing.signedUpAt) {
+        patch.signedUpAt = args.signedUpAt;
       }
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(existing._id, patch);
@@ -55,6 +68,8 @@ export const upsertByPhone = mutationGeneric({
       firstSeenAt: Date.now(),
       state: "idle",
       country: args.country,
+      assignedPhone: args.assignedPhone,
+      signedUpAt: args.signedUpAt,
     });
 
     return {

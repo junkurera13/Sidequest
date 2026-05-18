@@ -59,7 +59,12 @@ export type UserMemory = {
 
 export const upsertUserByPhone = makeFunctionReference<
   "mutation",
-  { phone: string; country?: string },
+  {
+    phone: string;
+    country?: string;
+    assignedPhone?: string;
+    signedUpAt?: number;
+  },
   {
     isNew: boolean;
     state: ConversationState;

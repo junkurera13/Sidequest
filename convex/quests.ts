@@ -333,6 +333,51 @@ export const generate = actionGeneric({
       break;
     }
 
+    // Fallback: if Claude finished without calling create_sidequest (e.g. it
+    // wrapped up research as plain text), force the structured tool call.
+    const hasQuestToolCall = body!.content?.some(
+      (block) => block.type === "tool_use" && block.name === questTool.name,
+    );
+
+    if (!hasQuestToolCall) {
+      messages.push({ role: "assistant", content: body!.content });
+      messages.push({
+        role: "user",
+        content:
+          "you didn't call create_sidequest yet. " +
+          "use what you researched and call it now with exactly three stops. " +
+          "do not write any text outside the tool call.",
+      });
+
+      const fallbackResponse = await fetch(
+        "https://api.anthropic.com/v1/messages",
+        {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 2000,
+            system: systemPrompt,
+            tools: [questTool],
+            tool_choice: { type: "tool", name: questTool.name },
+            messages,
+          }),
+        },
+      );
+
+      body = (await fallbackResponse.json()) as ClaudeMessageResponse;
+
+      if (!fallbackResponse.ok) {
+        throw new Error(
+          body.error?.message ?? "quest fallback call failed.",
+        );
+      }
+    }
+
     const quest = extractQuestFromClaudeResponse(body!);
     const shortId = nanoid(8);
 

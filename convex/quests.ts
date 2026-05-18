@@ -187,7 +187,8 @@ export const generateFollowup = actionGeneric({
         max_tokens: 100,
         system:
           "you're sidequest, an imessage agent that suggests irl things to do. " +
-          "ask ONE short follow-up text to fill the biggest gap.\n\n" +
+          "your job RIGHT NOW: ask ONE short follow-up QUESTION. your reply MUST end with a question mark. " +
+          "never just ack/vibe (no 'bored szn lets cook' / 'on it' / 'gimme a sec'). always end with a real question.\n\n" +
           "factors that matter (rough priority):\n" +
           "1. location (city/neighborhood)\n" +
           "2. vibe/mood (chill, party, romantic, adventurous, foodie, outdoor, indoor)\n" +
@@ -197,8 +198,8 @@ export const generateFollowup = actionGeneric({
           "6. energy level (sit & chat, walk around, active)\n" +
           "7. constraints (dietary, weather, no booze, accessibility)\n\n" +
           "if memory already covers a factor, do NOT re-ask it. pick the most-useful missing one. " +
-          "if everything's covered, ask something specific that would sharpen the plan (e.g. 'food first or vibe first?'). " +
-          "tone: high school friend over imessage. all lowercase. under 12 words. no preamble. no 'sure!' or 'got it!'. just the question.",
+          "if every factor is already covered, ask something that sharpens the plan (e.g. 'food first or drinks first?', 'walk or take the train?', 'down for somewhere new or a usual?'). " +
+          "tone: high school friend over imessage. all lowercase. under 14 words. no preamble. no 'sure!' or 'got it!'. just the question.",
         messages: [
           {
             role: "user",
@@ -271,14 +272,20 @@ export const generate = actionGeneric({
       "TONE: lowercase, short, sounds like a high school friend texting. no caps, no exclamation marks, no corporate energy. " +
       "no 'mission' / 'case file' / 'checkpoint' / 'dispatch' / 'protocol' language. think 'go grab x at y' not 'tactical refueling stop'. " +
       "the title, brief, stop descriptions, inviteText, and backup all need to sound like a friend texting.\n\n" +
+      "HARD RULES (do not break these — these are why users come to sidequest at all):\n" +
+      "- every stop MUST name a specific real place (actual business or venue name).\n" +
+      "- NEVER tell the user to 'find a coffee shop' or 'search google maps' or 'look for a bar nearby'. that is the user doing your job. you do the work and name the place.\n" +
+      "- mapSearch field for each stop must be the place's specific name + neighborhood/city — not a generic category search.\n" +
+      "- if you genuinely can't find a real place via web_search, fall back to your own knowledge of the city and name a real, well-known venue you know exists. never punt to a generic instruction.\n" +
+      "- 3 distinct stops. don't repeat the same vibe across all three.\n\n" +
       "FACTORS to consider for every plan: location (city/neighborhood), vibe (chill, party, romantic, adventurous, foodie, outdoor, indoor), " +
       "budget, group (solo, date, friends, family), time, duration, energy level, constraints (dietary, weather, etc.). " +
       "use whatever the user said + memory; for unknowns, infer the most reasonable default. " +
       "if memory says the user is on vacation, lean toward 'make the most of being here' — local-only spots, hidden gems, things they wouldn't do at home. " +
       "respect dietary / constraint notes from memory.\n\n" +
       countryLine +
-      "ALWAYS use the web_search tool to ground stops in specific real places that currently exist in the user's area. " +
-      "prefer spots with recent reviews. after researching, call create_sidequest exactly once to deliver the final plan.";
+      "use the web_search tool aggressively to ground stops in specific real places with recent reviews. " +
+      "after researching, call create_sidequest exactly once to deliver the final plan.";
 
     const messages: Array<{ role: "user" | "assistant"; content: unknown }> = [
       {

@@ -23,6 +23,17 @@ export const generateFollowupQuestion = makeFunctionReference<
   { question: string }
 >("quests:generateFollowup");
 
+export const generateQuestAck = makeFunctionReference<
+  "action",
+  {
+    pendingRequest: string;
+    followup: string;
+    country?: string;
+    memorySummary?: string;
+  },
+  { ack: string }
+>("quests:generateAck");
+
 export const getQuestByShortId = makeFunctionReference<
   "query",
   { shortId: string },

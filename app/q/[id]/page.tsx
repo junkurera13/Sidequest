@@ -8,13 +8,15 @@ export const dynamic = "force-dynamic";
 
 function SetupNotice({ message }: { message: string }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f8f3e7] px-5">
-      <div className="max-w-md rounded-[2rem] border-2 border-stone-950 bg-white p-6 shadow-[8px_8px_0_#1c1917]">
-        <p className="font-mono text-xs font-black uppercase tracking-[0.2em] text-red-700">
-          Mission desk offline
+    <main className="flex min-h-screen items-center justify-center bg-black px-5">
+      <div className="max-w-md border-4 border-pixel-pink bg-black p-6 pixel-shadow-yellow">
+        <p className="font-[family-name:var(--font-vt323)] text-base uppercase tracking-[0.3em] text-pixel-pink">
+          offline
         </p>
-        <h1 className="mt-3 text-3xl font-black">Convex needs setup.</h1>
-        <p className="mt-3 text-sm font-semibold leading-6 text-stone-700">
+        <h1 className="mt-3 font-[family-name:var(--font-pixelify-sans)] text-3xl font-bold text-pixel-yellow">
+          convex needs setup
+        </h1>
+        <p className="mt-3 font-[family-name:var(--font-vt323)] text-xl leading-snug text-white">
           {message}
         </p>
       </div>

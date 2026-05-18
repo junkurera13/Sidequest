@@ -75,6 +75,83 @@ export const saveGeneratedQuest = mutationGeneric({
   },
 });
 
+export const generateAck = actionGeneric({
+  args: {
+    pendingRequest: v.string(),
+    followup: v.string(),
+    country: v.optional(v.string()),
+    memorySummary: v.optional(v.string()),
+  },
+  handler: async (_ctx, args): Promise<{ ack: string }> => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
+      );
+    }
+
+    const memoryBlock = args.memorySummary?.trim()
+      ? `what we know about them: ${args.memorySummary}`
+      : "no prior memory";
+
+    const countryBlock = args.country
+      ? `country: ${args.country}`
+      : "country: unknown";
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: CONVERSATION_MODEL,
+        max_tokens: 60,
+        system:
+          "you're sidequest. the user just told u what they want. u're about to make them a plan but it'll take ~10 sec. " +
+          "send ONE quick text to ack what they said and signal u're on it.\n\n" +
+          "rules:\n" +
+          "- tone: high school friend over imessage. all lowercase. under 12 words. no caps, no exclamation marks.\n" +
+          "- react SPECIFICALLY to what they said — vibe, mood, group, time. examples: \"bet, hiking spots incoming\", \"ohh date night, gimme a sec\", \"clubbing edition cooking\", \"chill mode locked in\", \"broke night, no problem\".\n" +
+          "- do NOT invent factual claims: weather, news, current events, prices, distances. you don't know any of that.\n" +
+          "- do NOT list options or preview what u'll suggest. just ack + say u're on it.\n" +
+          "- no preamble. no 'sure!' or 'got it!'. just the text.",
+        messages: [
+          {
+            role: "user",
+            content:
+              `their initial msg: "${args.pendingRequest}"\n` +
+              `their followup answer: "${args.followup}"\n` +
+              `${countryBlock}\n` +
+              `${memoryBlock}\n\n` +
+              "write the one ack text.",
+          },
+        ],
+      }),
+    });
+
+    const body = (await response.json()) as ClaudeMessageResponse;
+
+    if (!response.ok) {
+      throw new Error(body.error?.message ?? "Couldn't generate ack.");
+    }
+
+    const text = body.content
+      ?.filter((block) => block.type === "text" && block.text)
+      .map((block) => block.text!.trim())
+      .join(" ")
+      .trim();
+
+    if (!text) {
+      throw new Error("Claude returned no ack text.");
+    }
+
+    return { ack: text };
+  },
+});
+
 export const generateFollowup = actionGeneric({
   args: {
     request: v.string(),

@@ -1,0 +1,130 @@
+import type { ConvexHttpClient } from "convex/browser";
+import type { Space } from "spectrum-ts";
+
+import {
+  generateFollowupQuestion,
+  generateQuest,
+  generateQuestAck,
+  resetUserToIdle,
+  setUserAwaitingFollowup,
+  updateUserMemory,
+  upsertUserByPhone,
+  type UserMemory,
+} from "./convexFunctions";
+
+export function formatMemory(memory: UserMemory): string {
+  const parts: string[] = [];
+  if (memory.name) parts.push(`name: ${memory.name}`);
+  if (memory.homeCity) parts.push(`home: ${memory.homeCity}`);
+  if (memory.currentCity && memory.currentCity !== memory.homeCity) {
+    parts.push(
+      `currently in: ${memory.currentCity}${memory.onVacation ? " (on vacation)" : ""}`,
+    );
+  } else if (memory.onVacation) {
+    parts.push("on vacation");
+  }
+  if (memory.country) parts.push(`country: ${memory.country}`);
+  if (memory.notes) parts.push(`notes: ${memory.notes}`);
+  return parts.join("; ");
+}
+
+export type AgentHandlerParams = {
+  client: ConvexHttpClient;
+  space: Space;
+  phone: string;
+  text: string;
+  country?: string;
+  publicBaseUrl: string;
+  onLog?: (line: string) => void;
+};
+
+function absoluteUrl(baseUrl: string, path: string) {
+  return new URL(path, baseUrl).toString();
+}
+
+export async function handleInboundText(params: AgentHandlerParams) {
+  const { client, space, phone, text, country, publicBaseUrl, onLog } = params;
+
+  const user = await client.mutation(upsertUserByPhone, {
+    phone,
+    country,
+  });
+
+  const memorySummary = formatMemory(user.memory);
+
+  onLog?.(
+    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
+  );
+
+  await space.responding(async () => {
+    try {
+      if (user.state === "awaiting_followup" && user.pendingRequest) {
+        const combined = `${user.pendingRequest}\n\nfollowup answer: ${text}`;
+
+        // Sonnet + web search runs in parallel with the quick Haiku ack.
+        const questPromise = client.action(generateQuest, {
+          request: combined,
+          country: user.country,
+          memorySummary,
+        });
+
+        try {
+          const { ack } = await client.action(generateQuestAck, {
+            pendingRequest: user.pendingRequest,
+            followup: text,
+            country: user.country,
+            memorySummary,
+          });
+          await space.send(ack);
+        } catch (cause) {
+          onLog?.(`ack generation failed: ${cause}`);
+        }
+
+        const quest = await questPromise;
+        const questUrl = absoluteUrl(publicBaseUrl, quest.url);
+
+        await client.mutation(resetUserToIdle, { phone });
+        await space.send(`ight here u go:\n\n${questUrl}`);
+
+        void client
+          .action(updateUserMemory, {
+            phone,
+            conversation: `user (initial): ${user.pendingRequest}\nuser (followup): ${text}`,
+            existingMemory: memorySummary,
+          })
+          .catch((cause) => onLog?.(`memory update error: ${cause}`));
+        return;
+      }
+
+      const { question } = await client.action(generateFollowupQuestion, {
+        request: text,
+        country,
+        memorySummary,
+      });
+
+      await client.mutation(setUserAwaitingFollowup, {
+        phone,
+        pendingRequest: text,
+      });
+
+      const greeting = user.isNew ? "yo im sidequest. " : "";
+      await space.send(`${greeting}${question}`);
+
+      void client
+        .action(updateUserMemory, {
+          phone,
+          conversation: `user: ${text}`,
+          existingMemory: memorySummary,
+        })
+        .catch((cause) => onLog?.(`memory update error: ${cause}`));
+    } catch (cause) {
+      const errorMessage =
+        cause instanceof Error
+          ? cause.message
+          : "shit broke. try again in a sec.";
+
+      onLog?.(`handler error: ${errorMessage}`);
+      await space.send(`shit broke: ${errorMessage}`);
+    }
+  });
+}

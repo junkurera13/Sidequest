@@ -10,19 +10,19 @@ export function TextSidequestButton() {
 
   if (!phone) {
     return (
-      <div className="inline-flex items-center gap-3 rounded-full border-2 border-stone-950 bg-stone-300 px-7 py-4 text-lg font-black uppercase tracking-[0.16em] text-stone-700 shadow-[6px_6px_0_#1c1917]">
-        Coming soon
-      </div>
+      <span className="inline-flex items-center gap-3 border-4 border-white bg-black px-8 py-5 font-[family-name:var(--font-pixelify-sans)] text-2xl font-bold uppercase tracking-wider text-white sm:text-3xl pixel-shadow-pink">
+        coming soon
+      </span>
     );
   }
 
   return (
     <a
       href={buildSmsHref(phone)}
-      className="inline-flex items-center gap-3 rounded-full border-2 border-stone-950 bg-emerald-400 px-7 py-4 text-lg font-black uppercase tracking-[0.16em] text-stone-950 shadow-[6px_6px_0_#1c1917] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_#1c1917]"
+      className="group inline-flex items-center gap-4 border-4 border-black bg-pixel-yellow px-8 py-5 font-[family-name:var(--font-pixelify-sans)] text-2xl font-bold uppercase tracking-wider text-black transition-transform hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 sm:text-3xl pixel-shadow-pink"
     >
       text sidequest
-      <span aria-hidden className="text-xl">→</span>
+      <span aria-hidden className="text-3xl">→</span>
     </a>
   );
 }

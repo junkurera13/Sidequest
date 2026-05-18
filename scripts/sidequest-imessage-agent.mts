@@ -4,15 +4,7 @@ import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-import {
-  generateFollowupQuestion,
-  generateQuest,
-  resetUserToIdle,
-  setUserAwaitingFollowup,
-  updateUserMemory,
-  upsertUserByPhone,
-  type UserMemory,
-} from "../lib/convexFunctions";
+import { handleInboundText } from "../lib/agentHandler";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -36,11 +28,6 @@ function requiredEnv(name: string, value: string | undefined) {
   return value;
 }
 
-function absoluteQuestUrl(path: string) {
-  const baseUrl = requiredEnv("SIDEQUEST_PUBLIC_BASE_URL", publicBaseUrl);
-  return new URL(path, baseUrl).toString();
-}
-
 function countryFromPhone(phone: string): string | undefined {
   const parsed = parsePhoneNumberFromString(phone);
   const region = parsed?.country;
@@ -54,22 +41,6 @@ function countryFromPhone(phone: string): string | undefined {
   } catch {
     return region;
   }
-}
-
-function formatMemory(memory: UserMemory): string {
-  const parts: string[] = [];
-  if (memory.name) parts.push(`name: ${memory.name}`);
-  if (memory.homeCity) parts.push(`home: ${memory.homeCity}`);
-  if (memory.currentCity && memory.currentCity !== memory.homeCity) {
-    parts.push(
-      `currently in: ${memory.currentCity}${memory.onVacation ? " (on vacation)" : ""}`,
-    );
-  } else if (memory.onVacation) {
-    parts.push("on vacation");
-  }
-  if (memory.country) parts.push(`country: ${memory.country}`);
-  if (memory.notes) parts.push(`notes: ${memory.notes}`);
-  return parts.join("; ");
 }
 
 function getTextContent(message: { content: unknown }) {
@@ -86,6 +57,8 @@ async function main() {
   const client = new ConvexHttpClient(
     requiredEnv("NEXT_PUBLIC_CONVEX_URL", convexUrl),
   );
+
+  const baseUrl = requiredEnv("SIDEQUEST_PUBLIC_BASE_URL", publicBaseUrl);
 
   const app = await Spectrum({
     projectId: requiredEnv("PHOTON_PROJECT_ID", projectId),
@@ -113,75 +86,14 @@ async function main() {
 
     const country = countryFromPhone(phone);
 
-    const user = await client.mutation(upsertUserByPhone, {
+    await handleInboundText({
+      client,
+      space,
       phone,
+      text,
       country,
-    });
-
-    const memorySummary = formatMemory(user.memory);
-
-    console.log(
-      `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
-    );
-
-    await space.responding(async () => {
-      try {
-        if (user.state === "awaiting_followup" && user.pendingRequest) {
-          const combined = `${user.pendingRequest}\n\nfollowup answer: ${text}`;
-
-          const quest = await client.action(generateQuest, {
-            request: combined,
-            country: user.country,
-            memorySummary,
-          });
-          const questUrl = absoluteQuestUrl(quest.url);
-
-          await client.mutation(resetUserToIdle, { phone });
-          await space.send(`ight here u go:\n\n${questUrl}`);
-
-          // Update memory from the full exchange. Fire-and-forget — don't
-          // block the reply or fail the conversation on memory errors.
-          void client
-            .action(updateUserMemory, {
-              phone,
-              conversation: `user (initial): ${user.pendingRequest}\nuser (followup): ${text}`,
-              existingMemory: memorySummary,
-            })
-            .catch((cause) => console.error("memory update error:", cause));
-          return;
-        }
-
-        const { question } = await client.action(generateFollowupQuestion, {
-          request: text,
-          country,
-          memorySummary,
-        });
-
-        await client.mutation(setUserAwaitingFollowup, {
-          phone,
-          pendingRequest: text,
-        });
-
-        const greeting = user.isNew ? "yo im sidequest. " : "";
-        await space.send(`${greeting}${question}`);
-
-        // Update memory based on this first message.
-        void client
-          .action(updateUserMemory, {
-            phone,
-            conversation: `user: ${text}`,
-            existingMemory: memorySummary,
-          })
-          .catch((cause) => console.error("memory update error:", cause));
-      } catch (cause) {
-        const errorMessage =
-          cause instanceof Error
-            ? cause.message
-            : "shit broke. try again in a sec.";
-
-        console.error(errorMessage);
-        await space.send(`shit broke: ${errorMessage}`);
-      }
+      publicBaseUrl: baseUrl,
+      onLog: (line) => console.log(line),
     });
   }
 }

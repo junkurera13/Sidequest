@@ -47,11 +47,11 @@ export default function Home() {
             </h1>
 
             <p className="font-[family-name:var(--font-pixelify-sans)] text-3xl font-bold leading-tight text-black sm:text-5xl">
-              text us.
+              life&apos;s too short
               <br />
-              we&apos;ll find u
+              to not go on
               <br />
-              something to do.
+              a sidequest.
             </p>
 
             <div className="mt-2">

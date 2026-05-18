@@ -1,17 +1,23 @@
 {
-  "name": "sidequest-mvp-tmp",
+  "name": "sidequest",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "imessage:agent": "tsx scripts/sidequest-imessage-agent.mts",
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
+    "convex": "^1.39.1",
+    "libphonenumber-js": "^1.13.2",
+    "nanoid": "^5.1.11",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "spectrum-ts": "^1.9.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +27,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.22.1",
+    "typescript": "^5",
+    "vitest": "^4.1.6"
   }
 }

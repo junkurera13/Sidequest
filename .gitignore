@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent / Claude Code state (per-machine, not project)
+.claude/
+.agents/

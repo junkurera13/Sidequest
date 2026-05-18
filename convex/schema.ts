@@ -1,0 +1,38 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+const stop = v.object({
+  name: v.string(),
+  description: v.string(),
+  mapSearch: v.string(),
+  estimatedCost: v.string(),
+});
+
+export default defineSchema({
+  quests: defineTable({
+    shortId: v.string(),
+    request: v.string(),
+    title: v.string(),
+    brief: v.string(),
+    stops: v.array(stop),
+    budget: v.string(),
+    inviteText: v.string(),
+    backup: v.string(),
+    createdAt: v.number(),
+  }).index("by_shortId", ["shortId"]),
+  users: defineTable({
+    phone: v.string(),
+    firstSeenAt: v.number(),
+    state: v.optional(
+      v.union(v.literal("idle"), v.literal("awaiting_followup")),
+    ),
+    pendingRequest: v.optional(v.string()),
+    country: v.optional(v.string()),
+    name: v.optional(v.string()),
+    homeCity: v.optional(v.string()),
+    currentCity: v.optional(v.string()),
+    onVacation: v.optional(v.boolean()),
+    notes: v.optional(v.string()),
+    memoryUpdatedAt: v.optional(v.number()),
+  }).index("by_phone", ["phone"]),
+});

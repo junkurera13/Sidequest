@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { buildMapSearchUrl } from "@/lib/quest";
 import type { QuestRecord } from "@/lib/convexFunctions";
 
@@ -8,13 +6,13 @@ export function QuestMission({ quest }: { quest: QuestRecord }) {
     <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-6 sm:py-12">
       <article className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <header className="flex items-start gap-4">
-          <Image
-            src="/logo-mark.png"
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-mark.svg"
             alt="sidequest"
             width={64}
             height={64}
             className="image-pixelated h-12 w-12 shrink-0 sm:h-16 sm:w-16"
-            priority
           />
           <div className="min-w-0 flex-1">
             <p className="font-[family-name:var(--font-vt323)] text-base uppercase tracking-[0.3em] text-pixel-green">

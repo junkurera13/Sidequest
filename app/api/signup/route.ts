@@ -94,8 +94,19 @@ export async function POST(request: Request) {
 
   if (!photonRes.ok) {
     console.error("photon signup failed:", photonRes.status, photonBody);
+    const photonMessage =
+      (photonBody as { error?: { message?: string } }).error?.message ??
+      (typeof (photonBody as { message?: unknown }).message === "string"
+        ? ((photonBody as { message?: string }).message as string)
+        : undefined);
     return Response.json(
-      { error: "couldnt set up your sidequest line. try again." },
+      {
+        error: `couldnt set up your sidequest line (${photonRes.status}${
+          photonMessage ? `: ${photonMessage}` : ""
+        }).`,
+        photonStatus: photonRes.status,
+        photonMessage,
+      },
       { status: 502 },
     );
   }

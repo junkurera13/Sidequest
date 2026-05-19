@@ -75,19 +75,30 @@ export function formatLocalTime(timezone: string, now: Date = new Date()) {
   }
 }
 
-// Combines whatever silent context we have (city + local time) into one
-// short line for the prompt. Returns undefined if we have nothing useful.
+// Combines whatever silent context we have (city + local time + weather)
+// into one short line for the prompt. Returns undefined if we have nothing
+// useful.
 export function buildLocalContext(opts: {
   phone?: string;
   city?: string;
   timezone?: string;
+  weather?: string;
 }): string | undefined {
   const tz = opts.timezone ?? (opts.phone ? timezoneFromPhone(opts.phone) : undefined);
   const time = tz ? formatLocalTime(tz) : undefined;
   const city = opts.city?.trim();
+  const weather = opts.weather?.trim();
 
-  if (!time && !city) return undefined;
-  if (time && city) return `it's ${time} for them in ${city}`;
-  if (time) return `it's ${time} where they are`;
-  return `they're in ${city}`;
+  if (!time && !city && !weather) return undefined;
+
+  const parts: string[] = [];
+  if (time && city) {
+    parts.push(`it's ${time} for them in ${city}`);
+  } else if (time) {
+    parts.push(`it's ${time} where they are`);
+  } else if (city) {
+    parts.push(`they're in ${city}`);
+  }
+  if (weather) parts.push(`weather: ${weather}`);
+  return parts.join("; ");
 }

@@ -10,6 +10,8 @@ export type UserMemory = {
   onVacation?: boolean;
   notes?: string;
   country?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export const upsertByPhone = mutationGeneric({
@@ -17,6 +19,8 @@ export const upsertByPhone = mutationGeneric({
     phone: v.string(),
     country: v.optional(v.string()),
     currentCity: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     assignedPhone: v.optional(v.string()),
     signedUpAt: v.optional(v.number()),
   },
@@ -47,6 +51,12 @@ export const upsertByPhone = mutationGeneric({
       if (args.currentCity && !existing.currentCity) {
         patch.currentCity = args.currentCity;
       }
+      if (args.latitude !== undefined && existing.latitude === undefined) {
+        patch.latitude = args.latitude;
+      }
+      if (args.longitude !== undefined && existing.longitude === undefined) {
+        patch.longitude = args.longitude;
+      }
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(existing._id, patch);
       }
@@ -58,6 +68,8 @@ export const upsertByPhone = mutationGeneric({
         onVacation: existing.onVacation,
         notes: existing.notes,
         country: args.country ?? existing.country,
+        latitude: (patch.latitude as number | undefined) ?? existing.latitude,
+        longitude: (patch.longitude as number | undefined) ?? existing.longitude,
       };
 
       return {
@@ -75,6 +87,8 @@ export const upsertByPhone = mutationGeneric({
       state: "idle",
       country: args.country,
       currentCity: args.currentCity,
+      latitude: args.latitude,
+      longitude: args.longitude,
       assignedPhone: args.assignedPhone,
       signedUpAt: args.signedUpAt,
     });
@@ -87,6 +101,8 @@ export const upsertByPhone = mutationGeneric({
       memory: {
         country: args.country,
         currentCity: args.currentCity,
+        latitude: args.latitude,
+        longitude: args.longitude,
       } as UserMemory,
     };
   },
@@ -144,6 +160,8 @@ export type UserProfile = {
   memoryUpdatedAt?: number;
   signedUpAt?: number;
   assignedPhone?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export const getByPhone = queryGeneric({
@@ -170,6 +188,8 @@ export const getByPhone = queryGeneric({
       memoryUpdatedAt: user.memoryUpdatedAt,
       signedUpAt: user.signedUpAt,
       assignedPhone: user.assignedPhone,
+      latitude: user.latitude,
+      longitude: user.longitude,
     };
   },
 });

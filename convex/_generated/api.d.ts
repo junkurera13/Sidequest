@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as location from "../location.js";
 import type * as memory from "../memory.js";
 import type * as quests from "../quests.js";
 import type * as users from "../users.js";
@@ -19,6 +20,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  location: typeof location;
   memory: typeof memory;
   quests: typeof quests;
   users: typeof users;

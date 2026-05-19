@@ -90,6 +90,8 @@ export type UserProfile = {
   memoryUpdatedAt?: number;
   signedUpAt?: number;
   assignedPhone?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export const getUserByPhone = makeFunctionReference<
@@ -97,6 +99,12 @@ export const getUserByPhone = makeFunctionReference<
   { phone: string },
   UserProfile | null
 >("users:getByPhone");
+
+export const resolveCurrentLocation = makeFunctionReference<
+  "action",
+  { text: string },
+  { city?: string; latitude?: number; longitude?: number }
+>("location:resolveCurrentLocation");
 
 export const saveGeneratedQuest = makeFunctionReference<
   "mutation",
@@ -113,6 +121,8 @@ export type UserMemory = {
   onVacation?: boolean;
   notes?: string;
   country?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export const upsertUserByPhone = makeFunctionReference<
@@ -121,6 +131,8 @@ export const upsertUserByPhone = makeFunctionReference<
     phone: string;
     country?: string;
     currentCity?: string;
+    latitude?: number;
+    longitude?: number;
     assignedPhone?: string;
     signedUpAt?: number;
   },

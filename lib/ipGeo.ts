@@ -8,6 +8,8 @@ export type IpGeo = {
   region?: string;
   countryCode?: string;
   timezone?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 const PRIVATE_IP_PREFIXES = [
@@ -65,6 +67,8 @@ export async function lookupIpGeo(ip: string): Promise<IpGeo | undefined> {
       region?: string;
       country_code?: string;
       timezone?: string;
+      latitude?: number;
+      longitude?: number;
       error?: boolean;
     };
     if (data.error) return undefined;
@@ -73,6 +77,10 @@ export async function lookupIpGeo(ip: string): Promise<IpGeo | undefined> {
       region: data.region?.trim() || undefined,
       countryCode: data.country_code?.trim() || undefined,
       timezone: data.timezone?.trim() || undefined,
+      latitude:
+        typeof data.latitude === "number" ? data.latitude : undefined,
+      longitude:
+        typeof data.longitude === "number" ? data.longitude : undefined,
     };
   } catch {
     return undefined;

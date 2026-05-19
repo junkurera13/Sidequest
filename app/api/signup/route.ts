@@ -124,6 +124,8 @@ export async function POST(request: Request) {
         phone: e164,
         country,
         currentCity: geo?.city,
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
         assignedPhone: assigned,
         signedUpAt: Date.now(),
       });

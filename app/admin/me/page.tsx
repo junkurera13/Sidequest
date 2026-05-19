@@ -174,6 +174,19 @@ function ProfileCard({ profile }: { profile: UserProfile }) {
               : emptyValue()
           }
         />
+        <MemoryField
+          label="coords"
+          value={
+            profile.latitude !== undefined &&
+            profile.longitude !== undefined ? (
+              <span className="font-mono text-sm text-zinc-300">
+                {profile.latitude.toFixed(2)}, {profile.longitude.toFixed(2)}
+              </span>
+            ) : (
+              emptyValue()
+            )
+          }
+        />
       </div>
 
       <div className="mt-7">

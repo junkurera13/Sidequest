@@ -40,6 +40,11 @@ export default defineSchema({
     onVacation: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     memoryUpdatedAt: v.optional(v.number()),
+    // Captured silently at signup via IP geolocation; used to look up current
+    // weather at quest time so the agent can recommend indoor/outdoor spots
+    // without having to ask.
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     // Set when a user signs up through the /signup form (vs. first-touch
     // via texting the agent directly). assignedPhone is the Photon
     // pool number we deep-link them to.

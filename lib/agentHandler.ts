@@ -6,6 +6,7 @@ import {
   generateQuest,
   generateQuestAck,
   resetUserToIdle,
+  resolveCurrentLocation,
   setUserAwaitingFollowup,
   updateUserMemory,
   upsertUserByPhone,
@@ -13,6 +14,7 @@ import {
   type QuestSource,
 } from "./convexFunctions";
 import { buildLocalContext } from "./timezones";
+import { fetchCurrentWeather, formatWeather } from "./weather";
 
 export function formatMemory(memory: UserMemory): string {
   const parts: string[] = [];
@@ -64,21 +66,62 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
   const memorySummary = formatMemory(user.memory);
 
-  // Silent context: local time (derived from phone country) + city (from
-  // IP geolocation at signup, if available). Computed fresh each turn so
-  // the agent always reasons about *now*, not signup time.
-  const localContext = buildLocalContext({
-    phone,
-    city: user.memory.currentCity,
-  });
-
   onLog?.(
-    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}" local="${localContext ?? "none"}": ${text}`,
+    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
   );
 
   await space.responding(async () => {
     try {
-      if (user.state === "awaiting_followup" && user.pendingRequest) {
+      const isFollowup =
+        user.state === "awaiting_followup" && !!user.pendingRequest;
+
+      // Resolve the user's *current-turn* location from their message before
+      // looking up weather. On the followup turn we combine both turns so
+      // "yo im bored" + "tokyo, broke" still resolves to Tokyo. Falls back
+      // to the IP-derived coords stored at signup when nothing can be pulled
+      // out of the text.
+      const resolveText = isFollowup
+        ? `${user.pendingRequest}\n\n${text}`
+        : text;
+
+      let resolvedCity: string | undefined = user.memory.currentCity;
+      let weatherLat = user.memory.latitude;
+      let weatherLon = user.memory.longitude;
+      try {
+        const resolved = await client.action(resolveCurrentLocation, {
+          text: resolveText,
+        });
+        if (resolved.city) resolvedCity = resolved.city;
+        if (
+          typeof resolved.latitude === "number" &&
+          typeof resolved.longitude === "number"
+        ) {
+          weatherLat = resolved.latitude;
+          weatherLon = resolved.longitude;
+        }
+      } catch (cause) {
+        onLog?.(`location resolve failed: ${cause}`);
+      }
+
+      let weatherPhrase: string | undefined;
+      if (typeof weatherLat === "number" && typeof weatherLon === "number") {
+        try {
+          const weather = await fetchCurrentWeather(weatherLat, weatherLon);
+          if (weather) weatherPhrase = formatWeather(weather);
+        } catch (cause) {
+          onLog?.(`weather fetch failed: ${cause}`);
+        }
+      }
+
+      const localContext = buildLocalContext({
+        phone,
+        city: resolvedCity,
+        weather: weatherPhrase,
+      });
+
+      onLog?.(`[${phone}] local="${localContext ?? "none"}"`);
+
+      if (isFollowup && user.pendingRequest) {
         const combined = `${user.pendingRequest}\n\nfollowup answer: ${text}`;
 
         // Sonnet + web search runs in parallel with the quick Haiku ack.

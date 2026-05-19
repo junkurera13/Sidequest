@@ -16,6 +16,7 @@ export const upsertByPhone = mutationGeneric({
   args: {
     phone: v.string(),
     country: v.optional(v.string()),
+    currentCity: v.optional(v.string()),
     assignedPhone: v.optional(v.string()),
     signedUpAt: v.optional(v.number()),
   },
@@ -41,6 +42,11 @@ export const upsertByPhone = mutationGeneric({
       if (args.signedUpAt && !existing.signedUpAt) {
         patch.signedUpAt = args.signedUpAt;
       }
+      // Only seed currentCity if we don't already have one — avoid clobbering
+      // a user-corrected value with a stale IP-derived guess.
+      if (args.currentCity && !existing.currentCity) {
+        patch.currentCity = args.currentCity;
+      }
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(existing._id, patch);
       }
@@ -48,7 +54,7 @@ export const upsertByPhone = mutationGeneric({
       const memory: UserMemory = {
         name: existing.name,
         homeCity: existing.homeCity,
-        currentCity: existing.currentCity,
+        currentCity: (patch.currentCity as string | undefined) ?? existing.currentCity,
         onVacation: existing.onVacation,
         notes: existing.notes,
         country: args.country ?? existing.country,
@@ -68,6 +74,7 @@ export const upsertByPhone = mutationGeneric({
       firstSeenAt: Date.now(),
       state: "idle",
       country: args.country,
+      currentCity: args.currentCity,
       assignedPhone: args.assignedPhone,
       signedUpAt: args.signedUpAt,
     });
@@ -77,7 +84,10 @@ export const upsertByPhone = mutationGeneric({
       state: "idle" as ConversationState,
       pendingRequest: undefined,
       country: args.country,
-      memory: { country: args.country } as UserMemory,
+      memory: {
+        country: args.country,
+        currentCity: args.currentCity,
+      } as UserMemory,
     };
   },
 });

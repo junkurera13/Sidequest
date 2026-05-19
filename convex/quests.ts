@@ -143,6 +143,7 @@ export const generateAck = actionGeneric({
     followup: v.string(),
     country: v.optional(v.string()),
     memorySummary: v.optional(v.string()),
+    localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ ack: string }> => {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -160,6 +161,10 @@ export const generateAck = actionGeneric({
     const countryBlock = args.country
       ? `country: ${args.country}`
       : "country: unknown";
+
+    const localContextLine = args.localContext?.trim()
+      ? `local context: ${args.localContext}`
+      : "";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -187,6 +192,7 @@ export const generateAck = actionGeneric({
               `their initial msg: "${args.pendingRequest}"\n` +
               `their followup answer: "${args.followup}"\n` +
               `${countryBlock}\n` +
+              (localContextLine ? `${localContextLine}\n` : "") +
               `${memoryBlock}\n\n` +
               "write the one ack text.",
           },
@@ -219,6 +225,7 @@ export const generateFollowup = actionGeneric({
     request: v.string(),
     country: v.optional(v.string()),
     memorySummary: v.optional(v.string()),
+    localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ question: string }> => {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -236,6 +243,10 @@ export const generateFollowup = actionGeneric({
     const memoryBlock = args.memorySummary?.trim()
       ? `what we already know about them: ${args.memorySummary}`
       : "we have no prior memory of this user yet";
+
+    const localContextLine = args.localContext?.trim()
+      ? `local context (use silently, never re-ask): ${args.localContext}`
+      : "";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -268,8 +279,9 @@ export const generateFollowup = actionGeneric({
             content:
               `their msg: "${args.request}"\n` +
               `${memoryBlock}\n` +
-              `context: ${countryHint}\n\n` +
-              "what's the one followup u'd ask?",
+              `context: ${countryHint}\n` +
+              (localContextLine ? `${localContextLine}\n` : "") +
+              "\nwhat's the one followup u'd ask?",
           },
         ],
       }),
@@ -302,6 +314,7 @@ export const generate = actionGeneric({
     request: v.string(),
     country: v.optional(v.string()),
     memorySummary: v.optional(v.string()),
+    localContext: v.optional(v.string()),
     phone: v.optional(v.string()),
     initialRequest: v.optional(v.string()),
     followupAnswer: v.optional(v.string()),
@@ -331,6 +344,10 @@ export const generate = actionGeneric({
       ? `the user's phone area code suggests they're in ${args.country} — assume that unless their message or memory says otherwise. `
       : "";
 
+    const localContextLine = args.localContext?.trim()
+      ? `LOCAL CONTEXT (you know this silently — never re-ask, never explicitly mention you know): ${args.localContext}. let it shape your suggestions naturally (e.g. night-mode places if it's late, places open right now, neighborhoods near them).\n\n`
+      : "";
+
     const memoryBlock = args.memorySummary?.trim()
       ? `what we know about this user: ${args.memorySummary}`
       : "we have no prior memory of this user.";
@@ -352,6 +369,7 @@ export const generate = actionGeneric({
       "if memory says the user is on vacation, lean toward 'make the most of being here' — local-only spots, hidden gems, things they wouldn't do at home. " +
       "respect dietary / constraint notes from memory.\n\n" +
       countryLine +
+      localContextLine +
       "use the web_search tool aggressively to ground stops in specific real places with recent reviews. " +
       "after researching, call create_sidequest exactly once to deliver the final plan.";
 

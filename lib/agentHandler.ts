@@ -12,6 +12,7 @@ import {
   type UserMemory,
   type QuestSource,
 } from "./convexFunctions";
+import { buildLocalContext } from "./timezones";
 
 export function formatMemory(memory: UserMemory): string {
   const parts: string[] = [];
@@ -63,8 +64,16 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
   const memorySummary = formatMemory(user.memory);
 
+  // Silent context: local time (derived from phone country) + city (from
+  // IP geolocation at signup, if available). Computed fresh each turn so
+  // the agent always reasons about *now*, not signup time.
+  const localContext = buildLocalContext({
+    phone,
+    city: user.memory.currentCity,
+  });
+
   onLog?.(
-    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
+    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}" local="${localContext ?? "none"}": ${text}`,
   );
 
   await space.responding(async () => {
@@ -77,6 +86,7 @@ export async function handleInboundText(params: AgentHandlerParams) {
           request: combined,
           country: user.country,
           memorySummary,
+          localContext,
           phone,
           initialRequest: user.pendingRequest,
           followupAnswer: text,
@@ -89,6 +99,7 @@ export async function handleInboundText(params: AgentHandlerParams) {
             followup: text,
             country: user.country,
             memorySummary,
+            localContext,
           });
           await space.send(ack);
         } catch (cause) {
@@ -115,6 +126,7 @@ export async function handleInboundText(params: AgentHandlerParams) {
         request: text,
         country,
         memorySummary,
+        localContext,
       });
 
       await client.mutation(setUserAwaitingFollowup, {

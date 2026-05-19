@@ -30,13 +30,19 @@ export const generateQuest = makeFunctionReference<
     request: string;
     country?: string;
     memorySummary?: string;
+    localContext?: string;
   } & QuestAttribution,
   { id: string; url: string }
 >("quests:generate");
 
 export const generateFollowupQuestion = makeFunctionReference<
   "action",
-  { request: string; country?: string; memorySummary?: string },
+  {
+    request: string;
+    country?: string;
+    memorySummary?: string;
+    localContext?: string;
+  },
   { question: string }
 >("quests:generateFollowup");
 
@@ -47,6 +53,7 @@ export const generateQuestAck = makeFunctionReference<
     followup: string;
     country?: string;
     memorySummary?: string;
+    localContext?: string;
   },
   { ack: string }
 >("quests:generateAck");
@@ -113,6 +120,7 @@ export const upsertUserByPhone = makeFunctionReference<
   {
     phone: string;
     country?: string;
+    currentCity?: string;
     assignedPhone?: string;
     signedUpAt?: number;
   },

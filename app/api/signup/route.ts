@@ -2,6 +2,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { upsertUserByPhone } from "@/lib/convexFunctions";
+import { clientIpFromHeaders, lookupIpGeo } from "@/lib/ipGeo";
 
 type PhotonUserResponse = {
   succeed?: boolean;
@@ -108,6 +109,12 @@ export async function POST(request: Request) {
     );
   }
 
+  // Silently resolve a rough city from the requester's IP. This is the
+  // "magic moment" — the agent later acts as if it knows where they are
+  // without ever having asked. Best-effort, no permission prompt.
+  const ip = clientIpFromHeaders(request.headers);
+  const geo = ip ? await lookupIpGeo(ip) : undefined;
+
   // Create / update the Convex user record. Best-effort: if it fails the
   // user can still text the agent and we'll create them on first message.
   if (convexUrl) {
@@ -116,6 +123,7 @@ export async function POST(request: Request) {
       await convex.mutation(upsertUserByPhone, {
         phone: e164,
         country,
+        currentCity: geo?.city,
         assignedPhone: assigned,
         signedUpAt: Date.now(),
       });

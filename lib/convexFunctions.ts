@@ -5,6 +5,8 @@ import {
 
 import type { QuestPayload } from "./quest";
 
+export type QuestOutcome = "won" | "lost" | "skipped";
+
 export type QuestRecord = QuestPayload & {
   shortId: string;
   request: string;
@@ -13,6 +15,8 @@ export type QuestRecord = QuestPayload & {
   followupAnswer?: string;
   source?: QuestSource;
   createdAt: number;
+  outcome?: QuestOutcome;
+  outcomeAt?: number;
 };
 
 export type QuestSource = "admin" | "imessage" | "terminal";
@@ -111,6 +115,12 @@ export const saveGeneratedQuest = makeFunctionReference<
   QuestPayload & { shortId: string; request: string } & QuestAttribution,
   { id: string; url: string }
 >("quests:saveGeneratedQuest");
+
+export const saveLatestOutcomeForPhone = makeFunctionReference<
+  "mutation",
+  { phone: string; outcome: QuestOutcome },
+  { shortId: string } | null
+>("quests:saveLatestOutcomeForPhone");
 
 export type ConversationState = "idle" | "awaiting_followup";
 

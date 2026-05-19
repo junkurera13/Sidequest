@@ -7,12 +7,14 @@ import {
   generateQuestAck,
   resetUserToIdle,
   resolveCurrentLocation,
+  saveLatestOutcomeForPhone,
   setUserAwaitingFollowup,
   updateUserMemory,
   upsertUserByPhone,
   type UserMemory,
   type QuestSource,
 } from "./convexFunctions";
+import { ackForOutcome, parseFeedback } from "./feedbackParser";
 import { buildLocalContext } from "./timezones";
 import { fetchCurrentWeather, formatWeather } from "./weather";
 
@@ -72,6 +74,28 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
   await space.responding(async () => {
     try {
+      // W/L feedback check: if the inbound message looks like outcome
+      // feedback (W, L, "did it", "skipped"...), try to attach it to the
+      // user's most recent quest. Standalone signals get a brief ack and
+      // we stop here; inline signals still let the conversation continue
+      // so the user can chain "L, give me something else" into a re-roll.
+      const feedback = parseFeedback(text);
+      if (feedback && user.state !== "awaiting_followup") {
+        const saved = await client.mutation(saveLatestOutcomeForPhone, {
+          phone,
+          outcome: feedback.outcome,
+        });
+        if (saved) {
+          onLog?.(
+            `[${phone}] outcome=${feedback.outcome} saved on ${saved.shortId}`,
+          );
+          if (feedback.isStandalone) {
+            await space.send(ackForOutcome(feedback.outcome));
+            return;
+          }
+        }
+      }
+
       const isFollowup =
         user.state === "awaiting_followup" && !!user.pendingRequest;
 

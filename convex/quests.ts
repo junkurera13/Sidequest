@@ -56,6 +56,8 @@ export const getByShortId = queryGeneric({
       inviteText: quest.inviteText,
       backup: quest.backup,
       createdAt: quest.createdAt,
+      outcome: quest.outcome,
+      outcomeAt: quest.outcomeAt,
     };
   },
 });
@@ -80,6 +82,8 @@ export const listRecent = queryGeneric({
       inviteText: quest.inviteText,
       backup: quest.backup,
       createdAt: quest.createdAt,
+      outcome: quest.outcome,
+      outcomeAt: quest.outcomeAt,
     }));
   },
 });
@@ -108,7 +112,43 @@ export const listByPhone = queryGeneric({
       inviteText: quest.inviteText,
       backup: quest.backup,
       createdAt: quest.createdAt,
+      outcome: quest.outcome,
+      outcomeAt: quest.outcomeAt,
     }));
+  },
+});
+
+// Time window in which we'll attach a W/L signal to the most recent quest.
+// Beyond 48h, an isolated "L" probably isn't about an old sidequest — treat
+// the message as a fresh request and ignore the feedback parse.
+const OUTCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+export const saveLatestOutcomeForPhone = mutationGeneric({
+  args: {
+    phone: v.string(),
+    outcome: v.union(
+      v.literal("won"),
+      v.literal("lost"),
+      v.literal("skipped"),
+    ),
+  },
+  handler: async (ctx, args): Promise<{ shortId: string } | null> => {
+    const latest = await ctx.db
+      .query("quests")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .order("desc")
+      .first();
+
+    if (!latest) return null;
+    if (latest.outcome) return null;
+    if (Date.now() - latest.createdAt > OUTCOME_WINDOW_MS) return null;
+
+    await ctx.db.patch(latest._id, {
+      outcome: args.outcome,
+      outcomeAt: Date.now(),
+    });
+
+    return { shortId: latest.shortId };
   },
 });
 

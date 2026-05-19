@@ -230,6 +230,25 @@ function ProfileCard({ profile }: { profile: UserProfile }) {
   );
 }
 
+function OutcomeChip({ outcome }: { outcome: QuestRecord["outcome"] }) {
+  if (!outcome) return null;
+  const style =
+    outcome === "won"
+      ? "text-pixel-green border-pixel-green/40 bg-pixel-green/10"
+      : outcome === "lost"
+        ? "text-pixel-pink border-pixel-pink/40 bg-pixel-pink/10"
+        : "text-zinc-300 border-zinc-700 bg-zinc-800/60";
+  const label =
+    outcome === "won" ? "W" : outcome === "lost" ? "L" : "skipped";
+  return (
+    <span
+      className={`rounded-full border px-2.5 py-1 font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.18em] ${style}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 function QuestHistoryCard({ quest }: { quest: QuestRecord }) {
   return (
     <article className="card-surface rounded-2xl p-6">
@@ -239,6 +258,7 @@ function QuestHistoryCard({ quest }: { quest: QuestRecord }) {
             <span className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2.5 py-1 font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.18em] text-zinc-300">
               {quest.source ?? "unknown"}
             </span>
+            <OutcomeChip outcome={quest.outcome} />
             <span className="text-xs text-zinc-500">
               {formatRelative(quest.createdAt)} ·{" "}
               {formatDate(quest.createdAt)}

@@ -25,7 +25,12 @@ export default defineSchema({
     inviteText: v.string(),
     backup: v.string(),
     createdAt: v.number(),
-  }).index("by_shortId", ["shortId"]),
+    // W/L feedback parsed from the user's first message after a quest drops.
+    outcome: v.optional(
+      v.union(v.literal("won"), v.literal("lost"), v.literal("skipped")),
+    ),
+    outcomeAt: v.optional(v.number()),
+  }).index("by_shortId", ["shortId"]).index("by_phone", ["phone"]),
   users: defineTable({
     phone: v.string(),
     firstSeenAt: v.number(),

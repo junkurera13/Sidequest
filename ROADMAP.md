@@ -8,18 +8,20 @@ iMessage agent that assigns real-world sidequests when people are bored. Web exi
 
 **Web** (deployed at `sdqst.fun` via Vercel):
 - Pixel-art landing page with PixelBlast WebGL background and magnetic CTA button
-- `/signup` route — phone-number form, calls `/api/signup` which creates the user in Photon (shared) and in Convex, then deep-links to iMessage
-- `/q/[id]` mission card — pixel-art styled, served via Convex
-- `/admin` — internal recent-quests dashboard with source, linked phone, initial request, follow-up answer, mission preview, and quest link
+- `/signup` route — Poke-inspired layout with country picker (20 countries, per-country placeholders, dial-code dropdown), composes E.164 client-side, calls `/api/signup` which creates the user in Photon (shared) + Convex with IP-derived city + lat/lon, then deep-links to iMessage
+- `/q/[id]` mission card — sleek dark redesign (subtle cards, accent dots, rounded number badges)
+- `/admin` — internal recent-quests dashboard, sleek dark redesign with source-coded chips
+- `/admin/me` — personal admin view of the operator's own user record + memory + full quest history (defaults to Jun's phone, swap with `?phone=`)
 - `/admin/generate` — internal manual generator for prompt iteration
 
 **Agent** (runs locally via `npm run imessage:agent`):
 - Inbound iMessage handler keyed by phone, parses country from phone number
 - Per-user state machine (`idle` → `awaiting_followup` → `idle`)
-- Convex `users` table holds memory: name, homeCity, currentCity, onVacation, notes, country, assignedPhone, signedUpAt
-- Two-tier model split: Haiku for follow-up question + quick ack + memory updater, Sonnet 4.6 + web search for quest crafting
+- Convex `users` table holds memory: name, homeCity, currentCity, onVacation, notes, country, assignedPhone, signedUpAt, latitude, longitude
+- Two-tier model split: Haiku for follow-up question + quick ack + memory updater + inline location extraction, Sonnet 4.6 + web search for quest crafting
 - Quest fallback: if Sonnet finishes without calling the structured tool, second forced pass
 - Memory auto-extracted via Haiku after each turn (fire-and-forget)
+- **Silent context** injected into every prompt: local time (from phone area code → timezone), current city (IP geo at signup OR Haiku-extracted from the current turn's text), live weather (Open-Meteo using the freshest available coords). Travel cases ("im in tokyo tonight") update weather on the first turn.
 - Terminal mode (`npm run terminal:agent`) for offline prompt iteration
 
 **Deployment:**
@@ -57,9 +59,9 @@ Goal: ready to share more widely without things breaking or burning credits.
 
 Quests get noticeably better.
 
-1. **Time-of-day + day-of-week awareness.** Pass current local time (derived from country) into the quest prompt so 11pm requests don't suggest brunch spots.
-2. **Weather awareness.** Free weather API → inject into the quest prompt; agent's quick ack can reference it honestly.
-3. **Richer memory.** Track past quests (titles + W/L), spots they've been to, dislikes. Use as anti-repetition signal.
+1. **Done: Time-of-day + day-of-week awareness.** Local time is derived from each user's phone country code on every turn and injected silently into the ack, follow-up, and quest prompts.
+2. **Done: Weather awareness.** Open-Meteo lookup runs every turn using either IP-derived signup coords or coords resolved from the current message's text via Haiku + Open-Meteo geocoder. Travel cases get the right weather on the first turn.
+3. **Richer memory.** Track past quests (titles + W/L), spots they've been to, dislikes. Use as anti-repetition signal. (Blocked on Phase 2 #1 W/L feedback.)
 4. **Multi-stop flexibility.** Currently fixed at 3 stops. Allow 1–5 based on time budget / vibe.
 5. **Group mode.** Multiple friends on the same quest, possibly via group iMessage thread (Photon supports DM + group).
 

@@ -1,4 +1,4 @@
-import { mutationGeneric } from "convex/server";
+import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 
 type ConversationState = "idle" | "awaiting_followup";
@@ -117,6 +117,50 @@ export const resetToIdle = mutationGeneric({
       state: "idle",
       pendingRequest: undefined,
     });
+  },
+});
+
+export type UserProfile = {
+  phone: string;
+  firstSeenAt: number;
+  state?: ConversationState;
+  pendingRequest?: string;
+  country?: string;
+  name?: string;
+  homeCity?: string;
+  currentCity?: string;
+  onVacation?: boolean;
+  notes?: string;
+  memoryUpdatedAt?: number;
+  signedUpAt?: number;
+  assignedPhone?: string;
+};
+
+export const getByPhone = queryGeneric({
+  args: { phone: v.string() },
+  handler: async (ctx, args): Promise<UserProfile | null> => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .unique();
+
+    if (!user) return null;
+
+    return {
+      phone: user.phone,
+      firstSeenAt: user.firstSeenAt,
+      state: user.state,
+      pendingRequest: user.pendingRequest,
+      country: user.country,
+      name: user.name,
+      homeCity: user.homeCity,
+      currentCity: user.currentCity,
+      onVacation: user.onVacation,
+      notes: user.notes,
+      memoryUpdatedAt: user.memoryUpdatedAt,
+      signedUpAt: user.signedUpAt,
+      assignedPhone: user.assignedPhone,
+    };
   },
 });
 

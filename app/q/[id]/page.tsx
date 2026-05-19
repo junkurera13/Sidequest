@@ -8,15 +8,15 @@ export const dynamic = "force-dynamic";
 
 function SetupNotice({ message }: { message: string }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-5">
-      <div className="max-w-md border-4 border-pixel-pink bg-black p-6 pixel-shadow-yellow">
-        <p className="font-[family-name:var(--font-vt323)] text-base uppercase tracking-[0.3em] text-pixel-pink">
+    <main className="text-smooth flex min-h-screen items-center justify-center bg-neutral-950 px-5 text-zinc-100">
+      <div className="card-surface max-w-md rounded-2xl p-7">
+        <p className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.3em] text-pixel-pink">
           offline
         </p>
-        <h1 className="mt-3 font-[family-name:var(--font-pixelify-sans)] text-3xl font-bold text-pixel-yellow">
+        <h1 className="mt-3 font-[family-name:var(--font-pixelify-sans)] text-3xl font-bold tracking-tight text-white">
           convex needs setup
         </h1>
-        <p className="mt-3 font-[family-name:var(--font-vt323)] text-xl leading-snug text-white">
+        <p className="mt-3 text-sm leading-relaxed text-zinc-300">
           {message}
         </p>
       </div>

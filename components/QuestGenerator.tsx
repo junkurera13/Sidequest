@@ -7,7 +7,7 @@ import Link from "next/link";
 import { generateQuest } from "@/lib/convexFunctions";
 
 const exampleRequest =
-  "I’m free tonight in Seoul, ₩30k budget, solo, surprise me.";
+  "I'm free tonight in Seoul, ₩30k budget, solo, surprise me.";
 
 export function QuestGenerator() {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -57,32 +57,33 @@ export function QuestGenerator() {
   }
 
   return (
-    <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-8 text-black sm:px-8">
+    <section className="text-smooth mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-10 text-zinc-100 sm:px-8 sm:py-14">
       <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-[family-name:var(--font-vt323)] text-xl uppercase text-black">
+          <p className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.32em] text-pixel-pink">
             sidequest admin
           </p>
-          <h1 className="mt-2 break-words font-[family-name:var(--font-pixelify-sans)] text-5xl font-bold leading-none text-pixel-pink sm:text-7xl">
+          <h1 className="mt-3 break-words font-[family-name:var(--font-pixelify-sans)] text-5xl font-bold leading-[1.02] tracking-tight text-white sm:text-7xl">
             manual dispatch
           </h1>
         </div>
         <Link
           href="/admin"
-          className="w-fit border-2 border-black bg-white px-4 py-3 font-[family-name:var(--font-pixelify-sans)] text-lg font-bold text-black pixel-shadow-black"
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white"
         >
+          <span aria-hidden>←</span>
           recent quests
         </Link>
       </div>
 
-      <div className="mt-8 grid min-w-0 gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="mt-10 grid min-w-0 gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <form
           onSubmit={handleSubmit}
-          className="min-w-0 border-4 border-black bg-white p-4 pixel-shadow-black sm:p-6"
+          className="card-surface min-w-0 rounded-2xl p-6 sm:p-7"
         >
           <label
             htmlFor="request"
-            className="font-[family-name:var(--font-vt323)] text-xl uppercase text-stone-500"
+            className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.3em] text-zinc-400"
           >
             incoming text
           </label>
@@ -91,60 +92,96 @@ export function QuestGenerator() {
             value={request}
             onChange={(event) => setRequest(event.target.value)}
             rows={8}
-            className="mt-3 w-full min-w-0 resize-none border-4 border-black bg-pixel-yellow p-4 font-[family-name:var(--font-pixelify-sans)] text-xl leading-snug text-black outline-none focus:bg-white sm:text-2xl"
+            className="mt-3 w-full min-w-0 resize-none rounded-xl border border-zinc-700 bg-neutral-950/60 p-4 text-base leading-relaxed text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-pixel-pink focus:bg-neutral-950 sm:text-lg"
             placeholder={exampleRequest}
           />
 
           <button
             type="submit"
             disabled={isLoading}
-            className="mt-4 w-full border-4 border-black bg-pixel-pink px-5 py-4 font-[family-name:var(--font-pixelify-sans)] text-2xl font-bold uppercase text-black transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 disabled:translate-x-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-stone-300 pixel-shadow-black"
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pixel-pink px-5 py-3.5 text-base font-semibold text-black transition-colors hover:bg-pixel-pink/90 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
           >
-            {isLoading ? "mission file incoming..." : "generate quest"}
+            {isLoading ? (
+              <>
+                <span
+                  aria-hidden
+                  className="h-2 w-2 animate-pulse rounded-full bg-black"
+                />
+                dispatching…
+              </>
+            ) : (
+              <>
+                generate quest
+                <span aria-hidden>→</span>
+              </>
+            )}
           </button>
         </form>
 
-        <aside className="min-w-0 border-4 border-black bg-black p-5 text-white pixel-shadow-black sm:p-6">
-          <p className="font-[family-name:var(--font-vt323)] text-xl uppercase text-pixel-green">
-            operator notes
-          </p>
-
-          <div className="mt-6 space-y-5">
-            <p className="font-[family-name:var(--font-pixelify-sans)] text-3xl font-bold leading-none text-pixel-yellow">
-              case accepted.
+        <aside className="card-surface min-w-0 rounded-2xl p-6 sm:p-7">
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 rounded-full bg-pixel-green"
+            />
+            <p className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.3em] text-pixel-green">
+              operator notes
             </p>
-            <p className="font-mono text-sm leading-6 text-stone-300">
-              use this when you want to test the quest brain without texting
-              the agent. paste the user request exactly how they would send it.
-              output is saved as an admin quest.
-            </p>
-
-            {isLoading && (
-              <div className="border-4 border-pixel-green bg-black p-4 font-[family-name:var(--font-pixelify-sans)] text-xl text-pixel-green">
-                consulting mission desk. stand by.
-              </div>
-            )}
-
-            {error && (
-              <div className="border-4 border-pixel-pink bg-black p-4 font-mono text-sm leading-6 text-pixel-pink">
-                {error}
-              </div>
-            )}
-
-            {result && (
-              <div className="border-4 border-pixel-green bg-black p-4">
-                <p className="font-[family-name:var(--font-vt323)] text-xl uppercase text-pixel-green">
-                  mission file ready
-                </p>
-                <a
-                  href={result.url}
-                  className="mt-3 block break-all font-[family-name:var(--font-pixelify-sans)] text-2xl font-bold text-pixel-yellow underline decoration-pixel-pink decoration-4 underline-offset-4"
-                >
-                  {result.url}
-                </a>
-              </div>
-            )}
           </div>
+
+          {!isLoading && !error && !result && (
+            <div className="mt-5 space-y-4">
+              <p className="font-[family-name:var(--font-pixelify-sans)] text-2xl font-bold tracking-tight text-white">
+                test the quest brain.
+              </p>
+              <p className="text-sm leading-relaxed text-zinc-400">
+                paste a user request exactly how they&apos;d send it via text.
+                output saves as an admin-source quest so it doesn&apos;t mix
+                with real traffic.
+              </p>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="mt-5 flex items-center gap-3 rounded-xl border border-pixel-green/40 bg-pixel-green/5 px-4 py-3.5 text-sm text-pixel-green">
+              <span
+                aria-hidden
+                className="h-2 w-2 animate-pulse rounded-full bg-pixel-green"
+              />
+              consulting mission desk…
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-5 rounded-xl border border-pixel-pink/40 bg-pixel-pink/5 px-4 py-3.5">
+              <p className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.3em] text-pixel-pink">
+                error
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-pixel-pink">
+                {error}
+              </p>
+            </div>
+          )}
+
+          {result && (
+            <div className="mt-5 space-y-3 rounded-xl border border-pixel-green/40 bg-pixel-green/5 p-4">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="h-1.5 w-1.5 rounded-full bg-pixel-green"
+                />
+                <p className="font-[family-name:var(--font-vt323)] text-xs uppercase tracking-[0.3em] text-pixel-green">
+                  mission ready
+                </p>
+              </div>
+              <a
+                href={result.url}
+                className="block break-all font-[family-name:var(--font-pixelify-sans)] text-xl font-bold tracking-tight text-white underline decoration-pixel-green decoration-2 underline-offset-4 transition-colors hover:text-pixel-green"
+              >
+                {result.url}
+              </a>
+            </div>
+          )}
         </aside>
       </div>
     </section>

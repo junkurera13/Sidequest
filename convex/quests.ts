@@ -84,6 +84,34 @@ export const listRecent = queryGeneric({
   },
 });
 
+export const listByPhone = queryGeneric({
+  args: { phone: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<QuestRecord[]> => {
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const quests = await ctx.db
+      .query("quests")
+      .order("desc")
+      .filter((q) => q.eq(q.field("phone"), args.phone))
+      .take(limit);
+
+    return quests.map((quest) => ({
+      shortId: quest.shortId,
+      request: quest.request,
+      phone: quest.phone,
+      initialRequest: quest.initialRequest,
+      followupAnswer: quest.followupAnswer,
+      source: quest.source,
+      title: quest.title,
+      brief: quest.brief,
+      stops: quest.stops,
+      budget: quest.budget,
+      inviteText: quest.inviteText,
+      backup: quest.backup,
+      createdAt: quest.createdAt,
+    }));
+  },
+});
+
 export const saveGeneratedQuest = mutationGeneric({
   args: {
     shortId: v.string(),

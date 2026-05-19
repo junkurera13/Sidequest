@@ -38,6 +38,27 @@ body {
   font-smooth: never;
 }
 
+/* Re-enable smooth, antialiased text on specific containers that want a
+   modern, professional feel (cards, admin, generator). The body keeps
+   the pixel-art look for the landing page. */
+.text-smooth,
+.text-smooth * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: always;
+}
+
+/* Soft elevated card surface for the sleeker views. */
+.card-surface {
+  background-color: rgba(24, 24, 27, 0.6);
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.card-surface:hover {
+  border-color: rgba(82, 82, 91, 0.8);
+}
+
 button,
 textarea,
 input {

@@ -63,6 +63,34 @@ export const listRecentQuests = makeFunctionReference<
   QuestRecord[]
 >("quests:listRecent");
 
+export const listQuestsByPhone = makeFunctionReference<
+  "query",
+  { phone: string; limit?: number },
+  QuestRecord[]
+>("quests:listByPhone");
+
+export type UserProfile = {
+  phone: string;
+  firstSeenAt: number;
+  state?: ConversationState;
+  pendingRequest?: string;
+  country?: string;
+  name?: string;
+  homeCity?: string;
+  currentCity?: string;
+  onVacation?: boolean;
+  notes?: string;
+  memoryUpdatedAt?: number;
+  signedUpAt?: number;
+  assignedPhone?: string;
+};
+
+export const getUserByPhone = makeFunctionReference<
+  "query",
+  { phone: string },
+  UserProfile | null
+>("users:getByPhone");
+
 export const saveGeneratedQuest = makeFunctionReference<
   "mutation",
   QuestPayload & { shortId: string; request: string } & QuestAttribution,

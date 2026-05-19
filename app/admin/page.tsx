@@ -80,8 +80,11 @@ function QuestRow({ quest }: { quest: QuestRecord }) {
             {quest.brief}
           </p>
           <ol className="space-y-2">
-            {quest.stops.map((stop) => (
-              <li key={stop.name} className="font-mono text-sm text-black">
+            {quest.stops.map((stop, index) => (
+              <li
+                key={`${quest.shortId}-${index}`}
+                className="font-mono text-sm text-black"
+              >
                 <span className="font-bold">{stop.name}</span> -{" "}
                 {stop.estimatedCost}
               </li>

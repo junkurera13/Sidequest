@@ -25,7 +25,7 @@ iMessage agent that assigns real-world sidequests when people are bored. Web exi
 **Deployment:**
 - Web is on Vercel, auto-deploys on push to main
 - Convex dev deployment (`incredible-guineapig-515`)
-- iMessage agent script still runs on local laptop — not 24/7 yet
+- iMessage agent runs on Railway as a 24/7 worker (`sidequest-imessage-agent` / `sidequest-agent`)
 - Photon Free plan (10 user cap)
 
 ---
@@ -36,7 +36,7 @@ Goal: invite 5–10 friends, link `sdqst.fun`, and have it Just Work without Jun
 
 1. **Done: link quests to users.** New iMessage and terminal quests now save `phone`, `initialRequest`, `followupAnswer`, and `source`; admin-generated quests are marked as `admin`.
 2. **Done: admin observability.** `/admin` now shows recent quests with source, linked phone, request, follow-up answer, mission preview, and link. Critical for prompt-tuning based on real outputs.
-3. **Deploy the iMessage agent.** Move the long-running script off the laptop to a small 24/7 server (Fly.io / Railway / Render — ~$5/mo). Sidequest is "online" only when this is running.
+3. **Done: deploy the iMessage agent.** The long-running iMessage listener now runs on Railway, so Sidequest no longer depends on Jun's laptop being on.
 4. **Convex production deployment.** Currently using a dev deployment. Move quests + users to prod, swap env vars on Vercel + the deployed agent.
 
 ---

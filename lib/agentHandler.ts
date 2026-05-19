@@ -10,6 +10,7 @@ import {
   updateUserMemory,
   upsertUserByPhone,
   type UserMemory,
+  type QuestSource,
 } from "./convexFunctions";
 
 export function formatMemory(memory: UserMemory): string {
@@ -35,6 +36,7 @@ export type AgentHandlerParams = {
   text: string;
   country?: string;
   publicBaseUrl: string;
+  source: QuestSource;
   onLog?: (line: string) => void;
 };
 
@@ -43,7 +45,16 @@ function absoluteUrl(baseUrl: string, path: string) {
 }
 
 export async function handleInboundText(params: AgentHandlerParams) {
-  const { client, space, phone, text, country, publicBaseUrl, onLog } = params;
+  const {
+    client,
+    space,
+    phone,
+    text,
+    country,
+    publicBaseUrl,
+    source,
+    onLog,
+  } = params;
 
   const user = await client.mutation(upsertUserByPhone, {
     phone,
@@ -66,6 +77,10 @@ export async function handleInboundText(params: AgentHandlerParams) {
           request: combined,
           country: user.country,
           memorySummary,
+          phone,
+          initialRequest: user.pendingRequest,
+          followupAnswer: text,
+          source,
         });
 
         try {

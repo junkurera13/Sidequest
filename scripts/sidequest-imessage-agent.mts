@@ -93,6 +93,7 @@ async function main() {
       text,
       country,
       publicBaseUrl: baseUrl,
+      source: "imessage",
       onLog: (line) => console.log(line),
     });
   }

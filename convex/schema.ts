@@ -12,6 +12,12 @@ export default defineSchema({
   quests: defineTable({
     shortId: v.string(),
     request: v.string(),
+    phone: v.optional(v.string()),
+    initialRequest: v.optional(v.string()),
+    followupAnswer: v.optional(v.string()),
+    source: v.optional(
+      v.union(v.literal("admin"), v.literal("imessage"), v.literal("terminal")),
+    ),
     title: v.string(),
     brief: v.string(),
     stops: v.array(stop),

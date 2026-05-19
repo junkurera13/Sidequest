@@ -45,6 +45,10 @@ export const getByShortId = queryGeneric({
     return {
       shortId: quest.shortId,
       request: quest.request,
+      phone: quest.phone,
+      initialRequest: quest.initialRequest,
+      followupAnswer: quest.followupAnswer,
+      source: quest.source,
       title: quest.title,
       brief: quest.brief,
       stops: quest.stops,
@@ -56,10 +60,40 @@ export const getByShortId = queryGeneric({
   },
 });
 
+export const listRecent = queryGeneric({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args): Promise<QuestRecord[]> => {
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
+    const quests = await ctx.db.query("quests").order("desc").take(limit);
+
+    return quests.map((quest) => ({
+      shortId: quest.shortId,
+      request: quest.request,
+      phone: quest.phone,
+      initialRequest: quest.initialRequest,
+      followupAnswer: quest.followupAnswer,
+      source: quest.source,
+      title: quest.title,
+      brief: quest.brief,
+      stops: quest.stops,
+      budget: quest.budget,
+      inviteText: quest.inviteText,
+      backup: quest.backup,
+      createdAt: quest.createdAt,
+    }));
+  },
+});
+
 export const saveGeneratedQuest = mutationGeneric({
   args: {
     shortId: v.string(),
     request: v.string(),
+    phone: v.optional(v.string()),
+    initialRequest: v.optional(v.string()),
+    followupAnswer: v.optional(v.string()),
+    source: v.optional(
+      v.union(v.literal("admin"), v.literal("imessage"), v.literal("terminal")),
+    ),
     ...questPayloadArgs,
   },
   handler: async (ctx, args) => {
@@ -240,6 +274,12 @@ export const generate = actionGeneric({
     request: v.string(),
     country: v.optional(v.string()),
     memorySummary: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    initialRequest: v.optional(v.string()),
+    followupAnswer: v.optional(v.string()),
+    source: v.optional(
+      v.union(v.literal("admin"), v.literal("imessage"), v.literal("terminal")),
+    ),
   },
   handler: async (ctx, args) => {
     const request = args.request.trim();
@@ -392,6 +432,10 @@ export const generate = actionGeneric({
       ...quest,
       shortId,
       request,
+      phone: args.phone,
+      initialRequest: args.initialRequest,
+      followupAnswer: args.followupAnswer,
+      source: args.source,
     });
   },
 });

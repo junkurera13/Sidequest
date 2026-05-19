@@ -10,7 +10,8 @@ iMessage agent that assigns real-world sidequests when people are bored. Web exi
 - Pixel-art landing page with PixelBlast WebGL background and magnetic CTA button
 - `/signup` route — phone-number form, calls `/api/signup` which creates the user in Photon (shared) and in Convex, then deep-links to iMessage
 - `/q/[id]` mission card — pixel-art styled, served via Convex
-- `/admin` — internal generator for prompt iteration (no follow-up, no memory)
+- `/admin` — internal recent-quests dashboard with source, linked phone, initial request, follow-up answer, mission preview, and quest link
+- `/admin/generate` — internal manual generator for prompt iteration
 
 **Agent** (runs locally via `npm run imessage:agent`):
 - Inbound iMessage handler keyed by phone, parses country from phone number
@@ -33,8 +34,8 @@ iMessage agent that assigns real-world sidequests when people are bored. Web exi
 
 Goal: invite 5–10 friends, link `sdqst.fun`, and have it Just Work without Jun's laptop being on.
 
-1. **Link quests to users.** The `quests` table has `request` but no `phone` / `userId`. Add the link so we can see who got what and tie W/L feedback to a quest later.
-2. **Admin observability.** `/admin/quests` (or extend existing `/admin`) showing recent quests with the user's phone, request, follow-up answer, full mission, and link. Critical for prompt-tuning based on real outputs.
+1. **Done: link quests to users.** New iMessage and terminal quests now save `phone`, `initialRequest`, `followupAnswer`, and `source`; admin-generated quests are marked as `admin`.
+2. **Done: admin observability.** `/admin` now shows recent quests with source, linked phone, request, follow-up answer, mission preview, and link. Critical for prompt-tuning based on real outputs.
 3. **Deploy the iMessage agent.** Move the long-running script off the laptop to a small 24/7 server (Fly.io / Railway / Render — ~$5/mo). Sidequest is "online" only when this is running.
 4. **Convex production deployment.** Currently using a dev deployment. Move quests + users to prod, swap env vars on Vercel + the deployed agent.
 

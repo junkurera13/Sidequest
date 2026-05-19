@@ -67,6 +67,7 @@ async function main() {
       text,
       country: testCountry,
       publicBaseUrl,
+      source: "terminal",
       onLog: (line) => console.log(line),
     });
   }

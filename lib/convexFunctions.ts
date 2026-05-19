@@ -8,12 +8,29 @@ import type { QuestPayload } from "./quest";
 export type QuestRecord = QuestPayload & {
   shortId: string;
   request: string;
+  phone?: string;
+  initialRequest?: string;
+  followupAnswer?: string;
+  source?: QuestSource;
   createdAt: number;
+};
+
+export type QuestSource = "admin" | "imessage" | "terminal";
+
+export type QuestAttribution = {
+  phone?: string;
+  initialRequest?: string;
+  followupAnswer?: string;
+  source?: QuestSource;
 };
 
 export const generateQuest = makeFunctionReference<
   "action",
-  { request: string; country?: string; memorySummary?: string },
+  {
+    request: string;
+    country?: string;
+    memorySummary?: string;
+  } & QuestAttribution,
   { id: string; url: string }
 >("quests:generate");
 
@@ -40,9 +57,15 @@ export const getQuestByShortId = makeFunctionReference<
   QuestRecord | null
 >("quests:getByShortId");
 
+export const listRecentQuests = makeFunctionReference<
+  "query",
+  { limit?: number },
+  QuestRecord[]
+>("quests:listRecent");
+
 export const saveGeneratedQuest = makeFunctionReference<
   "mutation",
-  QuestPayload & { shortId: string; request: string },
+  QuestPayload & { shortId: string; request: string } & QuestAttribution,
   { id: string; url: string }
 >("quests:saveGeneratedQuest");
 

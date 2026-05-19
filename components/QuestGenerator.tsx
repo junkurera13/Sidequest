@@ -41,6 +41,7 @@ export function QuestGenerator() {
     try {
       const generated = await client.action(generateQuest, {
         request: request.trim(),
+        source: "admin",
       });
       setResult(generated);
     } catch (cause) {

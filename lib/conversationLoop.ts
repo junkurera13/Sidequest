@@ -111,7 +111,21 @@ export async function runConversationLoop(params: ConversationLoopParams) {
       });
     }
 
-    messages.push({ role: "assistant", content: step.content });
+    const cleanedAssistant: ContentBlock[] = [];
+    for (const block of step.content) {
+      if (block.type === "text") {
+        cleanedAssistant.push({ type: "text", text: block.text });
+      } else if (block.type === "tool_use") {
+        cleanedAssistant.push({
+          type: "tool_use",
+          id: block.id,
+          name: block.name,
+          input: block.input,
+        });
+      }
+    }
+
+    messages.push({ role: "assistant", content: cleanedAssistant });
     messages.push({ role: "user", content: toolResults });
   }
 

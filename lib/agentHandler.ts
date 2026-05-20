@@ -2,21 +2,13 @@ import type { ConvexHttpClient } from "convex/browser";
 import type { Space } from "spectrum-ts";
 
 import {
-  generateFollowupQuestion,
-  generateOutcomeAck,
-  generateQuest,
-  generateQuestAck,
-  generateQuestHandoff,
-  resetUserToIdle,
   resolveCurrentLocation,
-  saveLatestOutcomeForPhone,
-  setUserAwaitingFollowup,
   updateUserMemory,
   upsertUserByPhone,
   type UserMemory,
   type QuestSource,
 } from "./convexFunctions";
-import { ackForOutcome, parseFeedback } from "./feedbackParser";
+import { runConversationLoop } from "./conversationLoop";
 import { buildLocalContext } from "./timezones";
 import { fetchCurrentWeather, formatWeather } from "./weather";
 
@@ -47,87 +39,8 @@ export type AgentHandlerParams = {
   onLog?: (line: string) => void;
 };
 
-function absoluteUrl(baseUrl: string, path: string) {
-  return new URL(path, baseUrl).toString();
-}
-
 function hasRealPhoneIdentity(phone: string) {
   return /^\+\d{6,15}$/.test(phone);
-}
-
-function locationQuestion() {
-  return "where u at rn?";
-}
-
-function titleCaseLocation(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function inferLocationReply(text: string) {
-  const cleaned = text
-    .trim()
-    .replace(/[?!]+$/g, "")
-    .replace(/\brn\b/gi, "")
-    .replace(/\bright now\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const lower = cleaned.toLowerCase();
-
-  const knownCity = [
-    "seoul",
-    "tokyo",
-    "new york",
-    "london",
-    "paris",
-    "singapore",
-    "bangkok",
-    "taipei",
-    "hong kong",
-  ].find((city) => new RegExp(`\\b${city}\\b`, "i").test(cleaned));
-
-  const stationMatch = lower.match(/\b(?:in|at|near|around)\s+([a-z0-9'\-\s]+?\s+station)\b/);
-  if (stationMatch?.[1]) {
-    const station = titleCaseLocation(stationMatch[1]);
-    return knownCity ? `${station}, ${titleCaseLocation(knownCity)}` : station;
-  }
-
-  if (knownCity) {
-    return titleCaseLocation(knownCity);
-  }
-
-  const directLocation = lower.match(/^(?:i'?m|i am)?\s*(?:in|at|near|around)\s+(.+)$/);
-  const candidate = directLocation?.[1] ?? cleaned.split(",")[0];
-  const words = candidate.trim().split(/\s+/).filter(Boolean);
-  const nonLocationWords = /\b(cheap|budget|solo|friend|friends|date|food|drinks|chill|party|free|won|dollar|tonight|today|tomorrow|bored)\b/i;
-
-  if (words.length > 0 && words.length <= 4 && !nonLocationWords.test(candidate)) {
-    return titleCaseLocation(candidate);
-  }
-
-  return undefined;
-}
-
-function fallbackFollowupQuestion(text: string, country?: string) {
-  const lower = text.toLowerCase();
-
-  if (!/(seoul|tokyo|new york|london|paris|city|near|around|in )/.test(lower)) {
-    return locationQuestion();
-  }
-
-  if (!/(budget|cheap|free|\$|₩|won|solo|friend|date|tonight|today|tomorrow)/.test(lower)) {
-    return "what's the budget and who's going?";
-  }
-
-  if (country) {
-    return "what vibe are we aiming for?";
-  }
-
-  return "what city are we operating in?";
 }
 
 function userSafeError(cause: unknown) {
@@ -153,7 +66,6 @@ export async function handleInboundText(params: AgentHandlerParams) {
     text,
     country,
     publicBaseUrl,
-    source,
     onLog,
   } = params;
 
@@ -162,72 +74,27 @@ export async function handleInboundText(params: AgentHandlerParams) {
     country,
   });
 
-  // Photon shared-number mode currently identifies the sender as "shared",
-  // not as a real phone number. Treat that memory as untrusted because it can
-  // mix multiple testers into one fake user profile.
+  // Photon shared-number mode collapses multiple testers into a single
+  // "shared" identity. We never trust that memory because it cross-pollutes.
   const canTrustUserMemory = hasRealPhoneIdentity(phone);
   const memory = canTrustUserMemory ? user.memory : {};
   const memorySummary = canTrustUserMemory ? formatMemory(memory) : "";
 
   onLog?.(
-    `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
+    `[${phone}] (${country ?? "unknown"}) mem="${memorySummary || "empty"}": ${text}`,
   );
 
   await space.responding(async () => {
     try {
-      // W/L feedback check: if the inbound message looks like outcome
-      // feedback (W, L, "did it", "skipped"...), try to attach it to the
-      // user's most recent quest. Standalone signals get a brief ack and
-      // we stop here; inline signals still let the conversation continue
-      // so the user can chain "L, give me something else" into a re-roll.
-      const feedback = parseFeedback(text);
-      if (feedback && user.state !== "awaiting_followup") {
-        const saved = await client.mutation(saveLatestOutcomeForPhone, {
-          phone,
-          outcome: feedback.outcome,
-        });
-        if (saved) {
-          onLog?.(
-            `[${phone}] outcome=${feedback.outcome} saved on ${saved.shortId}`,
-          );
-          if (feedback.isStandalone) {
-            let ackText: string;
-            try {
-              const generated = await client.action(generateOutcomeAck, {
-                outcome: feedback.outcome,
-                questTitle: saved.title,
-                country: user.country,
-                memorySummary,
-              });
-              ackText = generated.text;
-            } catch (cause) {
-              onLog?.(`outcome ack generation failed: ${cause}`);
-              ackText = ackForOutcome(feedback.outcome);
-            }
-            await space.send(ackText);
-            return;
-          }
-        }
-      }
-
-      const isFollowup =
-        user.state === "awaiting_followup" && !!user.pendingRequest;
-
-      // Resolve the user's *current-turn* location from their message before
-      // looking up weather. On the followup turn we combine both turns so
-      // "yo im bored" + "tokyo, broke" still resolves to Tokyo. Falls back
-      // to the IP-derived coords stored at signup when nothing can be pulled
-      // out of the text.
-      const resolveText = isFollowup
-        ? `${user.pendingRequest}\n\n${text}`
-        : text;
-
+      // Pull a city out of the new turn if there is one. The result joins
+      // any city already on file. We do this before the router runs so the
+      // router sees a fully resolved local context in its system prompt.
       let resolvedCity: string | undefined = memory.currentCity;
       let weatherLat = memory.latitude;
       let weatherLon = memory.longitude;
       try {
         const resolved = await client.action(resolveCurrentLocation, {
-          text: resolveText,
+          text,
         });
         if (resolved.city) resolvedCity = resolved.city;
         if (
@@ -239,14 +106,6 @@ export async function handleInboundText(params: AgentHandlerParams) {
         }
       } catch (cause) {
         onLog?.(`location resolve failed: ${cause}`);
-      }
-
-      if (!resolvedCity && isFollowup) {
-        const inferred = inferLocationReply(text);
-        if (inferred) {
-          resolvedCity = inferred;
-          onLog?.(`[${phone}] inferred location="${inferred}"`);
-        }
       }
 
       let weatherPhrase: string | undefined;
@@ -267,120 +126,27 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
       onLog?.(`[${phone}] local="${localContext ?? "none"}"`);
 
-      if (isFollowup && user.pendingRequest) {
-        const combined = `${user.pendingRequest}\n\nfollowup answer: ${text}`;
+      await runConversationLoop({
+        client,
+        space,
+        phone,
+        inboundText: text,
+        publicBaseUrl,
+        country: user.country,
+        memorySummary,
+        localContext,
+        onLog,
+      });
 
-        if (!resolvedCity) {
-          await client.mutation(setUserAwaitingFollowup, {
-            phone,
-            pendingRequest: combined,
-          });
-
-          let reaskQuestion: string;
-          try {
-            const generated = await client.action(generateFollowupQuestion, {
-              request: combined,
-              country: user.country,
-              memorySummary,
-              localContext,
-            });
-            reaskQuestion = generated.question;
-          } catch (cause) {
-            onLog?.(`followup generation failed: ${cause}`);
-            reaskQuestion = fallbackFollowupQuestion(combined, user.country);
-          }
-
-          await space.send(reaskQuestion);
-          return;
-        }
-
-        // Sonnet + web search runs in parallel with the quick Haiku ack.
-        const questPromise = client.action(generateQuest, {
-          request: combined,
-          country: user.country,
-          memorySummary,
-          localContext,
-          phone,
-          initialRequest: user.pendingRequest,
-          followupAnswer: text,
-          source,
-        });
-
-        try {
-          const { ack } = await client.action(generateQuestAck, {
-            pendingRequest: user.pendingRequest,
-            followup: text,
-            country: user.country,
-            memorySummary,
-            localContext,
-          });
-          await space.send(ack);
-        } catch (cause) {
-          onLog?.(`ack generation failed: ${cause}`);
-        }
-
-        const quest = await questPromise;
-        const questUrl = absoluteUrl(publicBaseUrl, quest.url);
-
-        await client.mutation(resetUserToIdle, { phone });
-
-        let handoff: string;
-        try {
-          const generated = await client.action(generateQuestHandoff, {
-            title: quest.title,
-            initialRequest: user.pendingRequest,
-            followupAnswer: text,
-            country: user.country,
-            memorySummary,
-            localContext,
-          });
-          handoff = generated.text;
-        } catch (cause) {
-          onLog?.(`handoff generation failed: ${cause}`);
-          handoff = "ight here u go:";
-        }
-
-        await space.send(`${handoff}\n\n${questUrl}`);
-
+      if (canTrustUserMemory) {
         void client
           .action(updateUserMemory, {
             phone,
-            conversation: `user (initial): ${user.pendingRequest}\nuser (followup): ${text}`,
+            conversation: `user: ${text}`,
             existingMemory: memorySummary,
           })
           .catch((cause) => onLog?.(`memory update error: ${cause}`));
-        return;
       }
-
-      let question: string;
-      try {
-        const generated = await client.action(generateFollowupQuestion, {
-          request: text,
-          country,
-          memorySummary,
-          localContext,
-        });
-        question = generated.question;
-      } catch (cause) {
-        onLog?.(`followup generation failed: ${cause}`);
-        question = fallbackFollowupQuestion(text, country);
-      }
-
-      await client.mutation(setUserAwaitingFollowup, {
-        phone,
-        pendingRequest: text,
-      });
-
-      const greeting = user.isNew ? "yo im sidequest. " : "";
-      await space.send(`${greeting}${question}`);
-
-      void client
-        .action(updateUserMemory, {
-          phone,
-          conversation: `user: ${text}`,
-          existingMemory: memorySummary,
-        })
-        .catch((cause) => onLog?.(`memory update error: ${cause}`));
     } catch (cause) {
       const errorMessage = userSafeError(cause);
 

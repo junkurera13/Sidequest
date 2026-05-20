@@ -57,6 +57,47 @@ function getTextContent(message: { content: unknown }) {
   return content.text.trim();
 }
 
+// Photon/Spectrum can yield the same inbound iMessage twice when the bridge
+// reconnects or retries. We dedup on both message id and (phone + text) within
+// a short window because Photon sometimes assigns fresh ids to re-delivered
+// messages, in which case id-only dedup misses them. Burning a Sonnet quest
+// call per duplicate is expensive, so we err on the side of skipping.
+const ID_DEDUP_WINDOW_MS = 5 * 60 * 1000;
+const CONTENT_DEDUP_WINDOW_MS = 30 * 1000;
+const seenMessageIds = new Map<string, number>();
+const seenContent = new Map<string, number>();
+
+function pruneExpired(map: Map<string, number>, windowMs: number) {
+  const now = Date.now();
+  for (const [key, timestamp] of map) {
+    if (now - timestamp > windowMs) {
+      map.delete(key);
+    }
+  }
+}
+
+function isDuplicateInbound(args: {
+  id: string;
+  phone: string;
+  text: string;
+}): boolean {
+  pruneExpired(seenMessageIds, ID_DEDUP_WINDOW_MS);
+  pruneExpired(seenContent, CONTENT_DEDUP_WINDOW_MS);
+
+  if (seenMessageIds.has(args.id)) {
+    return true;
+  }
+
+  const contentKey = `${args.phone}::${args.text}`;
+  if (seenContent.has(contentKey)) {
+    return true;
+  }
+
+  seenMessageIds.set(args.id, Date.now());
+  seenContent.set(contentKey, Date.now());
+  return false;
+}
+
 async function main() {
   const client = new ConvexHttpClient(
     requiredEnv("NEXT_PUBLIC_CONVEX_URL", convexUrl),
@@ -77,6 +118,10 @@ async function main() {
   for await (const [space, message] of iMessageApp.messages) {
     const { type, phone } = space as unknown as IMessageSpaceFields;
 
+    console.log(
+      `inbound received id=${message.id} type=${type} phone=${phone}`,
+    );
+
     if (type !== "dm") {
       continue;
     }
@@ -85,6 +130,13 @@ async function main() {
 
     if (!text) {
       await space.send("send text bro. cant read that rn.");
+      continue;
+    }
+
+    if (isDuplicateInbound({ id: message.id, phone, text })) {
+      console.log(
+        `skipping duplicate inbound id=${message.id} phone=${phone} text="${text}"`,
+      );
       continue;
     }
 

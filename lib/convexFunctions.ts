@@ -87,6 +87,55 @@ export const generateOutcomeAck = makeFunctionReference<
   { text: string }
 >("quests:generateOutcomeAck");
 
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; tool_use_id: string; content: string };
+
+export type RouterMessage = {
+  role: "user" | "assistant";
+  content: string | ContentBlock[];
+};
+
+export const appendConversationMessage = makeFunctionReference<
+  "mutation",
+  { phone: string; role: "user" | "agent"; text: string },
+  null
+>("conversation:appendMessage");
+
+export const listRecentMessages = makeFunctionReference<
+  "query",
+  { phone: string; limit?: number },
+  Array<{ role: "user" | "agent"; text: string; createdAt: number }>
+>("conversation:listRecentMessages");
+
+export const stepRouter = makeFunctionReference<
+  "action",
+  {
+    phone: string;
+    messages: RouterMessage[];
+    memorySummary?: string;
+    localContext?: string;
+    country?: string;
+  },
+  { content: ContentBlock[]; stopReason: string }
+>("conversation:stepRouter");
+
+export const executeRouterTool = makeFunctionReference<
+  "action",
+  {
+    phone: string;
+    toolUseId: string;
+    toolName: string;
+    toolInput: Record<string, unknown>;
+    country?: string;
+    memorySummary?: string;
+    localContext?: string;
+    publicBaseUrl: string;
+  },
+  { toolUseId: string; content: string }
+>("conversation:executeTool");
+
 export const getQuestByShortId = makeFunctionReference<
   "query",
   { shortId: string },

@@ -56,4 +56,14 @@ export default defineSchema({
     signedUpAt: v.optional(v.number()),
     assignedPhone: v.optional(v.string()),
   }).index("by_phone", ["phone"]),
+  // Short-term conversation context so the router LLM can answer follow-up
+  // questions about an active quest, hold chitchat, and remember what was
+  // already asked. Long-term facts still live in the `users` row via
+  // `updateUserMemory`; this table is just the last few turns per phone.
+  conversationMessages: defineTable({
+    phone: v.string(),
+    role: v.union(v.literal("user"), v.literal("agent")),
+    text: v.string(),
+    createdAt: v.number(),
+  }).index("by_phone", ["phone", "createdAt"]),
 });

@@ -52,10 +52,18 @@ const TIMEZONE_BY_REGION: Record<string, string> = {
 };
 
 export function timezoneFromPhone(phone: string): string | undefined {
-  const parsed = parsePhoneNumberFromString(phone);
-  const region = parsed?.country;
-  if (!region) return undefined;
-  return TIMEZONE_BY_REGION[region];
+  if (!/^\+\d{6,15}$/.test(phone)) {
+    return undefined;
+  }
+
+  try {
+    const parsed = parsePhoneNumberFromString(phone);
+    const region = parsed?.country;
+    if (!region) return undefined;
+    return TIMEZONE_BY_REGION[region];
+  } catch {
+    return undefined;
+  }
 }
 
 // "Tuesday 10:47pm" — concise enough for a prompt slot, easy for Sonnet to

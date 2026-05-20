@@ -29,17 +29,21 @@ function requiredEnv(name: string, value: string | undefined) {
 }
 
 function countryFromPhone(phone: string): string | undefined {
-  const parsed = parsePhoneNumberFromString(phone);
-  const region = parsed?.country;
-
-  if (!region) {
+  if (!/^\+\d{6,15}$/.test(phone)) {
     return undefined;
   }
 
   try {
+    const parsed = parsePhoneNumberFromString(phone);
+    const region = parsed?.country;
+
+    if (!region) {
+      return undefined;
+    }
+
     return COUNTRY_NAMES.of(region) ?? region;
   } catch {
-    return region;
+    return undefined;
   }
 }
 

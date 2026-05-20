@@ -3,8 +3,10 @@ import type { Space } from "spectrum-ts";
 
 import {
   generateFollowupQuestion,
+  generateOutcomeAck,
   generateQuest,
   generateQuestAck,
+  generateQuestHandoff,
   resetUserToIdle,
   resolveCurrentLocation,
   saveLatestOutcomeForPhone,
@@ -49,6 +51,100 @@ function absoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
 }
 
+function hasRealPhoneIdentity(phone: string) {
+  return /^\+\d{6,15}$/.test(phone);
+}
+
+function locationQuestion() {
+  return "where u at rn?";
+}
+
+function titleCaseLocation(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function inferLocationReply(text: string) {
+  const cleaned = text
+    .trim()
+    .replace(/[?!]+$/g, "")
+    .replace(/\brn\b/gi, "")
+    .replace(/\bright now\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lower = cleaned.toLowerCase();
+
+  const knownCity = [
+    "seoul",
+    "tokyo",
+    "new york",
+    "london",
+    "paris",
+    "singapore",
+    "bangkok",
+    "taipei",
+    "hong kong",
+  ].find((city) => new RegExp(`\\b${city}\\b`, "i").test(cleaned));
+
+  const stationMatch = lower.match(/\b(?:in|at|near|around)\s+([a-z0-9'\-\s]+?\s+station)\b/);
+  if (stationMatch?.[1]) {
+    const station = titleCaseLocation(stationMatch[1]);
+    return knownCity ? `${station}, ${titleCaseLocation(knownCity)}` : station;
+  }
+
+  if (knownCity) {
+    return titleCaseLocation(knownCity);
+  }
+
+  const directLocation = lower.match(/^(?:i'?m|i am)?\s*(?:in|at|near|around)\s+(.+)$/);
+  const candidate = directLocation?.[1] ?? cleaned.split(",")[0];
+  const words = candidate.trim().split(/\s+/).filter(Boolean);
+  const nonLocationWords = /\b(cheap|budget|solo|friend|friends|date|food|drinks|chill|party|free|won|dollar|tonight|today|tomorrow|bored)\b/i;
+
+  if (words.length > 0 && words.length <= 4 && !nonLocationWords.test(candidate)) {
+    return titleCaseLocation(candidate);
+  }
+
+  return undefined;
+}
+
+function fallbackFollowupQuestion(text: string, country?: string) {
+  const lower = text.toLowerCase();
+
+  if (!/(seoul|tokyo|new york|london|paris|city|near|around|in )/.test(lower)) {
+    return locationQuestion();
+  }
+
+  if (!/(budget|cheap|free|\$|₩|won|solo|friend|date|tonight|today|tomorrow)/.test(lower)) {
+    return "what's the budget and who's going?";
+  }
+
+  if (country) {
+    return "what vibe are we aiming for?";
+  }
+
+  return "what city are we operating in?";
+}
+
+function userSafeError(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("overloaded") ||
+    lower.includes("rate limit") ||
+    lower.includes("temporarily")
+  ) {
+    return "mission desk is overloaded rn. try again in a minute.";
+  }
+
+  return "mission desk jammed. try again in a sec.";
+}
+
 export async function handleInboundText(params: AgentHandlerParams) {
   const {
     client,
@@ -66,7 +162,12 @@ export async function handleInboundText(params: AgentHandlerParams) {
     country,
   });
 
-  const memorySummary = formatMemory(user.memory);
+  // Photon shared-number mode currently identifies the sender as "shared",
+  // not as a real phone number. Treat that memory as untrusted because it can
+  // mix multiple testers into one fake user profile.
+  const canTrustUserMemory = hasRealPhoneIdentity(phone);
+  const memory = canTrustUserMemory ? user.memory : {};
+  const memorySummary = canTrustUserMemory ? formatMemory(memory) : "";
 
   onLog?.(
     `[${phone}] (${country ?? "unknown"}) state=${user.state} mem="${memorySummary || "empty"}": ${text}`,
@@ -90,7 +191,20 @@ export async function handleInboundText(params: AgentHandlerParams) {
             `[${phone}] outcome=${feedback.outcome} saved on ${saved.shortId}`,
           );
           if (feedback.isStandalone) {
-            await space.send(ackForOutcome(feedback.outcome));
+            let ackText: string;
+            try {
+              const generated = await client.action(generateOutcomeAck, {
+                outcome: feedback.outcome,
+                questTitle: saved.title,
+                country: user.country,
+                memorySummary,
+              });
+              ackText = generated.text;
+            } catch (cause) {
+              onLog?.(`outcome ack generation failed: ${cause}`);
+              ackText = ackForOutcome(feedback.outcome);
+            }
+            await space.send(ackText);
             return;
           }
         }
@@ -108,9 +222,9 @@ export async function handleInboundText(params: AgentHandlerParams) {
         ? `${user.pendingRequest}\n\n${text}`
         : text;
 
-      let resolvedCity: string | undefined = user.memory.currentCity;
-      let weatherLat = user.memory.latitude;
-      let weatherLon = user.memory.longitude;
+      let resolvedCity: string | undefined = memory.currentCity;
+      let weatherLat = memory.latitude;
+      let weatherLon = memory.longitude;
       try {
         const resolved = await client.action(resolveCurrentLocation, {
           text: resolveText,
@@ -125,6 +239,14 @@ export async function handleInboundText(params: AgentHandlerParams) {
         }
       } catch (cause) {
         onLog?.(`location resolve failed: ${cause}`);
+      }
+
+      if (!resolvedCity && isFollowup) {
+        const inferred = inferLocationReply(text);
+        if (inferred) {
+          resolvedCity = inferred;
+          onLog?.(`[${phone}] inferred location="${inferred}"`);
+        }
       }
 
       let weatherPhrase: string | undefined;
@@ -147,6 +269,30 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
       if (isFollowup && user.pendingRequest) {
         const combined = `${user.pendingRequest}\n\nfollowup answer: ${text}`;
+
+        if (!resolvedCity) {
+          await client.mutation(setUserAwaitingFollowup, {
+            phone,
+            pendingRequest: combined,
+          });
+
+          let reaskQuestion: string;
+          try {
+            const generated = await client.action(generateFollowupQuestion, {
+              request: combined,
+              country: user.country,
+              memorySummary,
+              localContext,
+            });
+            reaskQuestion = generated.question;
+          } catch (cause) {
+            onLog?.(`followup generation failed: ${cause}`);
+            reaskQuestion = fallbackFollowupQuestion(combined, user.country);
+          }
+
+          await space.send(reaskQuestion);
+          return;
+        }
 
         // Sonnet + web search runs in parallel with the quick Haiku ack.
         const questPromise = client.action(generateQuest, {
@@ -177,7 +323,24 @@ export async function handleInboundText(params: AgentHandlerParams) {
         const questUrl = absoluteUrl(publicBaseUrl, quest.url);
 
         await client.mutation(resetUserToIdle, { phone });
-        await space.send(`ight here u go:\n\n${questUrl}`);
+
+        let handoff: string;
+        try {
+          const generated = await client.action(generateQuestHandoff, {
+            title: quest.title,
+            initialRequest: user.pendingRequest,
+            followupAnswer: text,
+            country: user.country,
+            memorySummary,
+            localContext,
+          });
+          handoff = generated.text;
+        } catch (cause) {
+          onLog?.(`handoff generation failed: ${cause}`);
+          handoff = "ight here u go:";
+        }
+
+        await space.send(`${handoff}\n\n${questUrl}`);
 
         void client
           .action(updateUserMemory, {
@@ -189,12 +352,19 @@ export async function handleInboundText(params: AgentHandlerParams) {
         return;
       }
 
-      const { question } = await client.action(generateFollowupQuestion, {
-        request: text,
-        country,
-        memorySummary,
-        localContext,
-      });
+      let question: string;
+      try {
+        const generated = await client.action(generateFollowupQuestion, {
+          request: text,
+          country,
+          memorySummary,
+          localContext,
+        });
+        question = generated.question;
+      } catch (cause) {
+        onLog?.(`followup generation failed: ${cause}`);
+        question = fallbackFollowupQuestion(text, country);
+      }
 
       await client.mutation(setUserAwaitingFollowup, {
         phone,
@@ -212,13 +382,10 @@ export async function handleInboundText(params: AgentHandlerParams) {
         })
         .catch((cause) => onLog?.(`memory update error: ${cause}`));
     } catch (cause) {
-      const errorMessage =
-        cause instanceof Error
-          ? cause.message
-          : "shit broke. try again in a sec.";
+      const errorMessage = userSafeError(cause);
 
-      onLog?.(`handler error: ${errorMessage}`);
-      await space.send(`shit broke: ${errorMessage}`);
+      onLog?.(`handler error: ${cause}`);
+      await space.send(errorMessage);
     }
   });
 }

@@ -132,7 +132,10 @@ export const saveLatestOutcomeForPhone = mutationGeneric({
       v.literal("skipped"),
     ),
   },
-  handler: async (ctx, args): Promise<{ shortId: string } | null> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ shortId: string; title: string } | null> => {
     const latest = await ctx.db
       .query("quests")
       .withIndex("by_phone", (q) => q.eq("phone", args.phone))
@@ -148,7 +151,7 @@ export const saveLatestOutcomeForPhone = mutationGeneric({
       outcomeAt: Date.now(),
     });
 
-    return { shortId: latest.shortId };
+    return { shortId: latest.shortId, title: latest.title };
   },
 });
 
@@ -257,6 +260,187 @@ export const generateAck = actionGeneric({
     }
 
     return { ack: text };
+  },
+});
+
+export const generateHandoff = actionGeneric({
+  args: {
+    title: v.string(),
+    initialRequest: v.optional(v.string()),
+    followupAnswer: v.optional(v.string()),
+    country: v.optional(v.string()),
+    memorySummary: v.optional(v.string()),
+    localContext: v.optional(v.string()),
+  },
+  handler: async (_ctx, args): Promise<{ text: string }> => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
+      );
+    }
+
+    const memoryBlock = args.memorySummary?.trim()
+      ? `what we know about them: ${args.memorySummary}`
+      : "no prior memory";
+
+    const localContextLine = args.localContext?.trim()
+      ? `local context: ${args.localContext}`
+      : "";
+
+    const initialLine = args.initialRequest?.trim()
+      ? `what they asked for: "${args.initialRequest}"`
+      : "";
+
+    const followupLine = args.followupAnswer?.trim()
+      ? `their followup: "${args.followupAnswer}"`
+      : "";
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: CONVERSATION_MODEL,
+        max_tokens: 60,
+        system:
+          "you're sidequest. u just finished making the user a real-world thing to do. " +
+          "u're about to send them the link to the mission card. write ONE short text that hands it off. " +
+          "the link goes on the next line — DO NOT include it yourself.\n\n" +
+          "rules:\n" +
+          "- tone: high school friend over imessage. all lowercase. under 10 words. no caps, no exclamation marks.\n" +
+          "- vary phrasing each time. don't sound canned or like 'ight here u go' / 'here you go' every time.\n" +
+          "- u CAN riff on the quest's theme if it adds energy (e.g. food/cafe/date/late-night/hike) — but DON'T spoil the specific place names.\n" +
+          "- do NOT say 'check this out', 'enjoy', 'hope u like it', or 'lmk what u think'.\n" +
+          "- no preamble. no 'sure!' or 'got it!'. just the one line.",
+        messages: [
+          {
+            role: "user",
+            content:
+              `the quest title is: "${args.title}"\n` +
+              (initialLine ? `${initialLine}\n` : "") +
+              (followupLine ? `${followupLine}\n` : "") +
+              (localContextLine ? `${localContextLine}\n` : "") +
+              `${memoryBlock}\n\n` +
+              "write the one handoff text.",
+          },
+        ],
+      }),
+    });
+
+    const body = (await response.json()) as ClaudeMessageResponse;
+
+    if (!response.ok) {
+      throw new Error(body.error?.message ?? "Couldn't generate handoff.");
+    }
+
+    const text = body.content
+      ?.filter((block) => block.type === "text" && block.text)
+      .map((block) => block.text!.trim())
+      .join(" ")
+      .trim();
+
+    if (!text) {
+      throw new Error("Claude returned no handoff text.");
+    }
+
+    return { text };
+  },
+});
+
+export const generateOutcomeAck = actionGeneric({
+  args: {
+    outcome: v.union(
+      v.literal("won"),
+      v.literal("lost"),
+      v.literal("skipped"),
+    ),
+    questTitle: v.optional(v.string()),
+    country: v.optional(v.string()),
+    memorySummary: v.optional(v.string()),
+    localContext: v.optional(v.string()),
+  },
+  handler: async (_ctx, args): Promise<{ text: string }> => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
+      );
+    }
+
+    const memoryBlock = args.memorySummary?.trim()
+      ? `what we know about them: ${args.memorySummary}`
+      : "no prior memory";
+
+    const localContextLine = args.localContext?.trim()
+      ? `local context: ${args.localContext}`
+      : "";
+
+    const titleLine = args.questTitle?.trim()
+      ? `the quest was: "${args.questTitle}"`
+      : "we don't know what quest they're reacting to";
+
+    const outcomeMeaning =
+      args.outcome === "won"
+        ? "won = they did the quest and it ruled"
+        : args.outcome === "lost"
+          ? "lost = they tried it but it didn't hit"
+          : "skipped = they didn't go (no judgment, not a fail)";
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: CONVERSATION_MODEL,
+        max_tokens: 60,
+        system:
+          "you're sidequest. the user just told u how their last quest went. react like a friend.\n\n" +
+          "rules:\n" +
+          "- tone: high school friend over imessage. all lowercase. under 14 words. no caps, no exclamation marks.\n" +
+          "- match the energy: 'won' = genuinely hyped for them. 'lost' = chill, no pity, vibe is 'next one's gonna hit'. 'skipped' = zero pressure, easy to come back when they're ready.\n" +
+          "- u CAN reference the quest theme/title if it lands naturally — but don't recap.\n" +
+          "- vary phrasing. don't fall into 'ayy lets gooo' / 'damn ok' / 'all good' every time.\n" +
+          "- no preamble. no 'sure!' or 'got it!'. just the reaction.",
+        messages: [
+          {
+            role: "user",
+            content:
+              `their outcome: ${args.outcome} (${outcomeMeaning})\n` +
+              `${titleLine}\n` +
+              (localContextLine ? `${localContextLine}\n` : "") +
+              `${memoryBlock}\n\n` +
+              "write the one reaction text.",
+          },
+        ],
+      }),
+    });
+
+    const body = (await response.json()) as ClaudeMessageResponse;
+
+    if (!response.ok) {
+      throw new Error(body.error?.message ?? "Couldn't generate outcome ack.");
+    }
+
+    const text = body.content
+      ?.filter((block) => block.type === "text" && block.text)
+      .map((block) => block.text!.trim())
+      .join(" ")
+      .trim();
+
+    if (!text) {
+      throw new Error("Claude returned no outcome ack text.");
+    }
+
+    return { text };
   },
 });
 
@@ -514,7 +698,7 @@ export const generate = actionGeneric({
     const quest = extractQuestFromClaudeResponse(body!);
     const shortId = nanoid(8);
 
-    return await ctx.runMutation(saveGeneratedQuestRef, {
+    const saved = await ctx.runMutation(saveGeneratedQuestRef, {
       ...quest,
       shortId,
       request,
@@ -523,5 +707,7 @@ export const generate = actionGeneric({
       followupAnswer: args.followupAnswer,
       source: args.source,
     });
+
+    return { ...saved, title: quest.title };
   },
 });

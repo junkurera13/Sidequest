@@ -36,7 +36,7 @@ export const generateQuest = makeFunctionReference<
     memorySummary?: string;
     localContext?: string;
   } & QuestAttribution,
-  { id: string; url: string }
+  { id: string; url: string; title: string }
 >("quests:generate");
 
 export const generateFollowupQuestion = makeFunctionReference<
@@ -61,6 +61,31 @@ export const generateQuestAck = makeFunctionReference<
   },
   { ack: string }
 >("quests:generateAck");
+
+export const generateQuestHandoff = makeFunctionReference<
+  "action",
+  {
+    title: string;
+    initialRequest?: string;
+    followupAnswer?: string;
+    country?: string;
+    memorySummary?: string;
+    localContext?: string;
+  },
+  { text: string }
+>("quests:generateHandoff");
+
+export const generateOutcomeAck = makeFunctionReference<
+  "action",
+  {
+    outcome: QuestOutcome;
+    questTitle?: string;
+    country?: string;
+    memorySummary?: string;
+    localContext?: string;
+  },
+  { text: string }
+>("quests:generateOutcomeAck");
 
 export const getQuestByShortId = makeFunctionReference<
   "query",
@@ -119,7 +144,7 @@ export const saveGeneratedQuest = makeFunctionReference<
 export const saveLatestOutcomeForPhone = makeFunctionReference<
   "mutation",
   { phone: string; outcome: QuestOutcome },
-  { shortId: string } | null
+  { shortId: string; title: string } | null
 >("quests:saveLatestOutcomeForPhone");
 
 export type ConversationState = "idle" | "awaiting_followup";

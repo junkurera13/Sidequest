@@ -1,4 +1,9 @@
-import { actionGeneric, mutationGeneric, queryGeneric } from "convex/server";
+import {
+  actionGeneric,
+  mutationGeneric,
+  queryGeneric,
+  makeFunctionReference,
+} from "convex/server";
 import { v } from "convex/values";
 
 import {
@@ -178,38 +183,41 @@ function formatActiveQuest(quest: {
   ].join("\n");
 }
 
-async function loadActiveQuest(
-  ctx: { db: { query: (name: string) => unknown } },
-  phone: string,
-): Promise<string | undefined> {
-  const db = ctx.db as unknown as {
-    query: (name: string) => {
-      withIndex: (
-        index: string,
-        cb: (q: { eq: (k: string, v: string) => unknown }) => unknown,
-      ) => {
-        order: (dir: string) => { first: () => Promise<unknown> };
-      };
+type ActiveQuestRow = {
+  title: string;
+  brief: string;
+  stops: Array<{ name: string; description: string }>;
+  budget: string;
+  createdAt: number;
+  outcome?: string;
+};
+
+export const getActiveQuestForPhone = queryGeneric({
+  args: { phone: v.string() },
+  handler: async (ctx, args): Promise<ActiveQuestRow | null> => {
+    const latest = await ctx.db
+      .query("quests")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .order("desc")
+      .first();
+    if (!latest) return null;
+    if (Date.now() - latest.createdAt > ACTIVE_QUEST_WINDOW_MS) return null;
+    return {
+      title: latest.title,
+      brief: latest.brief,
+      stops: latest.stops,
+      budget: latest.budget,
+      createdAt: latest.createdAt,
+      outcome: latest.outcome,
     };
-  };
-  const latest = (await db
-    .query("quests")
-    .withIndex("by_phone", (q) => q.eq("phone", phone))
-    .order("desc")
-    .first()) as
-    | {
-        title: string;
-        brief: string;
-        stops: Array<{ name: string; description: string }>;
-        budget: string;
-        createdAt: number;
-        outcome?: string;
-      }
-    | null;
-  if (!latest) return undefined;
-  if (Date.now() - latest.createdAt > ACTIVE_QUEST_WINDOW_MS) return undefined;
-  return formatActiveQuest(latest);
-}
+  },
+});
+
+const getActiveQuestForPhoneRef = makeFunctionReference<
+  "query",
+  { phone: string },
+  ActiveQuestRow | null
+>("conversation:getActiveQuestForPhone");
 
 export const stepRouter = actionGeneric({
   args: {
@@ -254,10 +262,9 @@ export const stepRouter = actionGeneric({
       throw new Error("Missing ANTHROPIC_API_KEY in Convex environment.");
     }
 
-    const activeQuest = await loadActiveQuest(
-      ctx as unknown as { db: { query: (name: string) => unknown } },
-      args.phone,
-    );
+    const activeQuestRow = await ctx.runQuery(getActiveQuestForPhoneRef, {
+      phone: args.phone,
+    });
 
     const dynamicLines: string[] = [];
     if (args.memorySummary?.trim()) {
@@ -271,8 +278,8 @@ export const stepRouter = actionGeneric({
     if (args.country) {
       dynamicLines.push(`their phone country: ${args.country}`);
     }
-    if (activeQuest) {
-      dynamicLines.push(activeQuest);
+    if (activeQuestRow) {
+      dynamicLines.push(formatActiveQuest(activeQuestRow));
     } else {
       dynamicLines.push("no recent quest within the last 24 hours");
     }

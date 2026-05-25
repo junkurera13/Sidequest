@@ -278,11 +278,11 @@ export const resetUserToIdle = makeFunctionReference<
   null
 >("users:resetToIdle");
 
-export const generateColdQuestReaction = makeFunctionReference<
+export const generateMirrorReaction = makeFunctionReference<
   "action",
-  { userAnswer: string },
+  { mirrorAnswer: string; userName: string },
   { text: string }
->("onboarding:generateColdQuestReaction");
+>("onboarding:generateMirrorReaction");
 
 export const advanceOnboarding = makeFunctionReference<
   "mutation",

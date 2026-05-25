@@ -4,6 +4,7 @@ import type { Space } from "spectrum-ts";
 import {
   advanceOnboarding,
   appendConversationMessage,
+  generateMirrorReaction,
   resolveCurrentLocation,
   saveMirrorAnswer,
   type OnboardingStep,
@@ -19,6 +20,7 @@ export type OnboardingParams = {
   phone: string;
   text: string;
   onboardingStep: OnboardingStep;
+  userName?: string;
   onLog?: (line: string) => void;
 };
 
@@ -74,9 +76,19 @@ export async function handleOnboarding(params: OnboardingParams) {
       question: MIRROR_QUESTION,
       answer: text,
     });
-    await send(
-      "ok i got u. where u at? like neighborhood or city is fine.",
-    );
+    let reactionText: string;
+    try {
+      const reaction = await client.action(generateMirrorReaction, {
+        mirrorAnswer: text,
+        userName: params.userName ?? "friend",
+      });
+      reactionText = reaction.text;
+    } catch (cause) {
+      onLog?.(`mirror reaction LLM failed: ${cause}`);
+      reactionText =
+        "that's the kinda stuff i wanna send u more of. where u at rn? like neighborhood or city is fine.";
+    }
+    await send(reactionText);
     await client.mutation(advanceOnboarding, {
       phone,
       step: "awaiting_location",
@@ -107,7 +119,7 @@ export async function handleOnboarding(params: OnboardingParams) {
       longitude,
     });
     await send(
-      "saved. i'll find u saturday. or just text me \"hit me\" whenever.",
+      "ok bet. i'll find u saturday. or just text me \"hit me\" whenever.",
     );
     return;
   }

@@ -4,31 +4,30 @@ import { v } from "convex/values";
 import { type ClaudeMessageResponse } from "../lib/claudeQuest";
 import { fetchMessages } from "../lib/llmProvider";
 
-export const generateColdQuestReaction = actionGeneric({
+export const generateMirrorReaction = actionGeneric({
   args: {
-    userAnswer: v.string(),
+    mirrorAnswer: v.string(),
+    userName: v.string(),
   },
   handler: async (_ctx, args): Promise<{ text: string }> => {
     const response = await fetchMessages("conversation", {
-      max_tokens: 120,
+      max_tokens: 80,
       system:
-        "you're sidequest. you just asked a brand new user to look around and tell you the weirdest thing they can see. " +
-        "they answered. now you need to:\n" +
-        "1. react briefly to what they said (acknowledge it, be amused or interested — make them feel heard)\n" +
-        "2. then reveal it was pointless and introduce yourself\n\n" +
+        "you're sidequest. you just asked a new user to tell you about a time they had a lot of fun. " +
+        "they shared a real memory. react like a friend who's genuinely interested — brief, warm, specific to what they said. " +
+        "then ask where they are right now.\n\n" +
         "your reply MUST follow this structure:\n" +
-        "[brief reaction to their specific answer]. anyway i literally just made u do that for no reason. " +
-        "but that's kinda what i do — i'm sidequest. i send u small random things to do in real life. " +
-        "some stupid, some actually cool.\n\nwhat's ur name?\n\n" +
+        "[brief warm reaction to their specific memory]. where u at rn? like neighborhood or city is fine.\n\n" +
         "rules:\n" +
-        "- the reaction part should be under 12 words and reference what they actually said\n" +
+        "- the reaction should be under 15 words and reference something specific from their story\n" +
         "- tone: high school friend over imessage. all lowercase. no caps, no exclamation marks.\n" +
-        "- the intro part after the reaction must stay close to the template above. don't rewrite it creatively.\n" +
-        "- end with: what's ur name?",
+        "- don't say 'that sounds fun' or 'cool' or 'nice' — be specific about what they described\n" +
+        "- don't say 'saved' or 'got it' or 'noted' — this isn't a transaction\n" +
+        "- end by asking where they are. use the exact phrase: where u at rn? like neighborhood or city is fine.",
       messages: [
         {
           role: "user",
-          content: `they said: "${args.userAnswer}"`,
+          content: `their name is ${args.userName}. they said: "${args.mirrorAnswer}"`,
         },
       ],
     });
@@ -37,11 +36,7 @@ export const generateColdQuestReaction = actionGeneric({
 
     if (!response.ok) {
       return {
-        text:
-          "lol i literally just made u do that for no reason. " +
-          "but that's kinda what i do — i'm sidequest. " +
-          "i send u small random things to do in real life. " +
-          "some stupid, some actually cool.\n\nwhat's ur name?",
+        text: "that's the kinda stuff i wanna send u more of. where u at rn? like neighborhood or city is fine.",
       };
     }
 
@@ -53,11 +48,7 @@ export const generateColdQuestReaction = actionGeneric({
 
     if (!text) {
       return {
-        text:
-          "lol i literally just made u do that for no reason. " +
-          "but that's kinda what i do — i'm sidequest. " +
-          "i send u small random things to do in real life. " +
-          "some stupid, some actually cool.\n\nwhat's ur name?",
+        text: "that's the kinda stuff i wanna send u more of. where u at rn? like neighborhood or city is fine.",
       };
     }
 

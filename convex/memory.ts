@@ -49,7 +49,7 @@ export const updateMemory = actionGeneric({
   },
   handler: async (ctx, args) => {
     const response = await fetchMessages("conversation", {
-      max_tokens: 600,
+      max_tokens: 2000,
       system:
         "you maintain memory for sidequest about one user. " +
         "read the existing memory + new conversation, then call update_user_memory with ONLY the fields that have new or clearer info. " +

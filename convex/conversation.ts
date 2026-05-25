@@ -279,7 +279,7 @@ export const stepRouter = actionGeneric({
     const dynamicContext = dynamicLines.join("\n\n");
 
     const response = await fetchMessages("conversation", {
-      max_tokens: 400,
+      max_tokens: 2000,
       system: [
         {
           type: "text",
@@ -405,7 +405,7 @@ export const executeTool = actionGeneric({
 
 async function lookUpPlace(query: string): Promise<string> {
   const response = await fetchMessages("conversation", {
-    max_tokens: 300,
+    max_tokens: 2000,
     system:
       "you look up specific real-world places using web search. given a query, return a SHORT factual summary: " +
       "current opening hours if available, address/neighborhood, and one line about what they're known for. " +

@@ -26,7 +26,7 @@ export const resolveCurrentLocation = actionGeneric({
     let city: string | undefined;
     try {
       const response = await fetchMessages("conversation", {
-        max_tokens: 40,
+        max_tokens: 2000,
         system:
           "extract the single most-specific location the user is at RIGHT NOW from their message. " +
           "prefer neighborhood + city when both are given (e.g. \"Gangnam, Seoul\"). " +

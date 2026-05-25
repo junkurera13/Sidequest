@@ -201,7 +201,7 @@ export const generateAck = actionGeneric({
       : "";
 
     const response = await fetchMessages("conversation", {
-      max_tokens: 60,
+      max_tokens: 2000,
       system:
         "you're sidequest. the user just told u what they want. u're about to make them a plan but it'll take ~10 sec. " +
         "send ONE quick text to ack what they said and signal u're on it.\n\n" +
@@ -272,7 +272,7 @@ export const generateHandoff = actionGeneric({
       : "";
 
     const response = await fetchMessages("conversation", {
-      max_tokens: 60,
+      max_tokens: 2000,
       system:
         "you're sidequest. u just finished making the user a real-world thing to do. " +
         "u're about to send them the link to the mission card. write ONE short text that hands it off. " +
@@ -350,7 +350,7 @@ export const generateOutcomeAck = actionGeneric({
           : "skipped = they didn't go (no judgment, not a fail)";
 
     const response = await fetchMessages("conversation", {
-      max_tokens: 60,
+      max_tokens: 2000,
       system:
         "you're sidequest. the user just told u how their last quest went. react like a friend.\n\n" +
         "rules:\n" +
@@ -413,7 +413,7 @@ export const generateFollowup = actionGeneric({
       : "";
 
     const response = await fetchMessages("conversation", {
-      max_tokens: 100,
+      max_tokens: 2000,
       system:
         "you're sidequest, an imessage agent that suggests irl things to do. " +
         "your job RIGHT NOW: ask ONE short follow-up QUESTION. your reply MUST end with a question mark. " +

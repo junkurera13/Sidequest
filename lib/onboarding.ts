@@ -88,7 +88,7 @@ export async function handleOnboarding(params: OnboardingParams) {
       reactionText = "that's the kinda stuff i wanna send u more of";
     }
     await send(reactionText);
-    await send("where u at rn? like neighborhood or city is fine.");
+    await send("where do u usually hang? like city or neighborhood");
     await client.mutation(advanceOnboarding, {
       phone,
       step: "awaiting_location",

@@ -3,6 +3,19 @@ import { v } from "convex/values";
 
 type ConversationState = "idle" | "awaiting_followup";
 
+export type OnboardingStep =
+  | "awaiting_cold_response"
+  | "awaiting_name"
+  | "awaiting_mirror"
+  | "awaiting_location"
+  | "complete";
+
+export type MirrorAnswer = {
+  question: string;
+  answer: string;
+  askedAt: number;
+};
+
 export type UserMemory = {
   name?: string;
   homeCity?: string;
@@ -12,6 +25,7 @@ export type UserMemory = {
   country?: string;
   latitude?: number;
   longitude?: number;
+  mirrorAnswers?: MirrorAnswer[];
 };
 
 export const upsertByPhone = mutationGeneric({
@@ -70,6 +84,7 @@ export const upsertByPhone = mutationGeneric({
         country: args.country ?? existing.country,
         latitude: (patch.latitude as number | undefined) ?? existing.latitude,
         longitude: (patch.longitude as number | undefined) ?? existing.longitude,
+        mirrorAnswers: existing.mirrorAnswers,
       };
 
       return {
@@ -77,6 +92,7 @@ export const upsertByPhone = mutationGeneric({
         state: (existing.state ?? "idle") as ConversationState,
         pendingRequest: existing.pendingRequest,
         country: args.country ?? existing.country,
+        onboardingStep: (existing.onboardingStep ?? "complete") as OnboardingStep,
         memory,
       };
     }
@@ -91,6 +107,7 @@ export const upsertByPhone = mutationGeneric({
       longitude: args.longitude,
       assignedPhone: args.assignedPhone,
       signedUpAt: args.signedUpAt,
+      onboardingStep: "awaiting_cold_response",
     });
 
     return {
@@ -98,6 +115,7 @@ export const upsertByPhone = mutationGeneric({
       state: "idle" as ConversationState,
       pendingRequest: undefined,
       country: args.country,
+      onboardingStep: "awaiting_cold_response" as OnboardingStep,
       memory: {
         country: args.country,
         currentCity: args.currentCity,
@@ -162,6 +180,8 @@ export type UserProfile = {
   assignedPhone?: string;
   latitude?: number;
   longitude?: number;
+  onboardingStep?: OnboardingStep;
+  mirrorAnswers?: MirrorAnswer[];
 };
 
 export const getByPhone = queryGeneric({
@@ -190,7 +210,70 @@ export const getByPhone = queryGeneric({
       assignedPhone: user.assignedPhone,
       latitude: user.latitude,
       longitude: user.longitude,
+      onboardingStep: user.onboardingStep,
+      mirrorAnswers: user.mirrorAnswers,
     };
+  },
+});
+
+export const advanceOnboarding = mutationGeneric({
+  args: {
+    phone: v.string(),
+    step: v.union(
+      v.literal("awaiting_cold_response"),
+      v.literal("awaiting_name"),
+      v.literal("awaiting_mirror"),
+      v.literal("awaiting_location"),
+      v.literal("complete"),
+    ),
+    name: v.optional(v.string()),
+    currentCity: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    const patch: Record<string, unknown> = { onboardingStep: args.step };
+    if (args.name !== undefined) patch.name = args.name;
+    if (args.currentCity !== undefined) patch.currentCity = args.currentCity;
+    if (args.latitude !== undefined) patch.latitude = args.latitude;
+    if (args.longitude !== undefined) patch.longitude = args.longitude;
+
+    await ctx.db.patch(user._id, patch);
+  },
+});
+
+export const saveMirrorAnswer = mutationGeneric({
+  args: {
+    phone: v.string(),
+    question: v.string(),
+    answer: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+
+    const existing = user.mirrorAnswers ?? [];
+    await ctx.db.patch(user._id, {
+      mirrorAnswers: [
+        ...existing,
+        {
+          question: args.question,
+          answer: args.answer,
+          askedAt: Date.now(),
+        },
+      ],
+    });
   },
 });
 

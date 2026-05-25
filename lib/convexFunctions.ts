@@ -154,6 +154,19 @@ export const listQuestsByPhone = makeFunctionReference<
   QuestRecord[]
 >("quests:listByPhone");
 
+export type OnboardingStep =
+  | "awaiting_cold_response"
+  | "awaiting_name"
+  | "awaiting_mirror"
+  | "awaiting_location"
+  | "complete";
+
+export type MirrorAnswer = {
+  question: string;
+  answer: string;
+  askedAt: number;
+};
+
 export type UserProfile = {
   phone: string;
   firstSeenAt: number;
@@ -170,6 +183,8 @@ export type UserProfile = {
   assignedPhone?: string;
   latitude?: number;
   longitude?: number;
+  onboardingStep?: OnboardingStep;
+  mirrorAnswers?: MirrorAnswer[];
 };
 
 export const getUserByPhone = makeFunctionReference<
@@ -207,6 +222,7 @@ export type UserMemory = {
   country?: string;
   latitude?: number;
   longitude?: number;
+  mirrorAnswers?: MirrorAnswer[];
 };
 
 export const upsertUserByPhone = makeFunctionReference<
@@ -225,6 +241,7 @@ export const upsertUserByPhone = makeFunctionReference<
     state: ConversationState;
     pendingRequest: string | undefined;
     country: string | undefined;
+    onboardingStep: OnboardingStep;
     memory: UserMemory;
   }
 >("users:upsertByPhone");
@@ -259,6 +276,25 @@ export const resetUserToIdle = makeFunctionReference<
   { phone: string },
   null
 >("users:resetToIdle");
+
+export const advanceOnboarding = makeFunctionReference<
+  "mutation",
+  {
+    phone: string;
+    step: OnboardingStep;
+    name?: string;
+    currentCity?: string;
+    latitude?: number;
+    longitude?: number;
+  },
+  null
+>("users:advanceOnboarding");
+
+export const saveMirrorAnswer = makeFunctionReference<
+  "mutation",
+  { phone: string; question: string; answer: string },
+  null
+>("users:saveMirrorAnswer");
 
 export type GenerateQuestReference = FunctionReference<
   "action",

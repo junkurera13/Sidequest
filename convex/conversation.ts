@@ -10,10 +10,8 @@ import {
   generateQuest,
   saveLatestOutcomeForPhone,
 } from "../lib/convexFunctions";
-import {
-  CONVERSATION_MODEL,
-  type ClaudeMessageResponse,
-} from "../lib/claudeQuest";
+import { type ClaudeMessageResponse } from "../lib/claudeQuest";
+import { fetchMessages } from "../lib/llmProvider";
 
 // Window for what counts as the user's "active" quest. Anything older is
 // treated as historical context — the router won't auto-reference it when
@@ -257,11 +255,6 @@ export const stepRouter = actionGeneric({
     content: ContentBlock[];
     stopReason: string;
   }> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error("Missing ANTHROPIC_API_KEY in Convex environment.");
-    }
-
     const activeQuestRow = await ctx.runQuery(getActiveQuestForPhoneRef, {
       phone: args.phone,
     });
@@ -285,30 +278,21 @@ export const stepRouter = actionGeneric({
     }
     const dynamicContext = dynamicLines.join("\n\n");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 400,
-        system: [
-          {
-            type: "text",
-            text: SYSTEM_PROMPT,
-            cache_control: { type: "ephemeral" },
-          },
-          {
-            type: "text",
-            text: dynamicContext,
-          },
-        ],
-        tools: ROUTER_TOOLS,
-        messages: args.messages as RouterMessage[],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 400,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM_PROMPT,
+          cache_control: { type: "ephemeral" },
+        },
+        {
+          type: "text",
+          text: dynamicContext,
+        },
+      ],
+      tools: ROUTER_TOOLS,
+      messages: args.messages as RouterMessage[],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse & {
@@ -420,26 +404,14 @@ export const executeTool = actionGeneric({
 });
 
 async function lookUpPlace(query: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY");
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: CONVERSATION_MODEL,
-      max_tokens: 300,
-      system:
-        "you look up specific real-world places using web search. given a query, return a SHORT factual summary: " +
-        "current opening hours if available, address/neighborhood, and one line about what they're known for. " +
-        "no commentary, no recommendations — just the facts. if you couldn't find reliable info, say so.",
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
-      messages: [{ role: "user", content: query }],
-    }),
+  const response = await fetchMessages("conversation", {
+    max_tokens: 300,
+    system:
+      "you look up specific real-world places using web search. given a query, return a SHORT factual summary: " +
+      "current opening hours if available, address/neighborhood, and one line about what they're known for. " +
+      "no commentary, no recommendations — just the facts. if you couldn't find reliable info, say so.",
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
+    messages: [{ role: "user", content: query }],
   });
 
   const body = (await response.json()) as ClaudeMessageResponse;

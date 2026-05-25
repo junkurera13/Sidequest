@@ -9,6 +9,7 @@ import {
   type QuestSource,
 } from "./convexFunctions";
 import { runConversationLoop } from "./conversationLoop";
+import { handleOnboarding } from "./onboarding";
 import { buildLocalContext } from "./timezones";
 import { fetchCurrentWeather, formatWeather } from "./weather";
 
@@ -25,6 +26,11 @@ export function formatMemory(memory: UserMemory): string {
   }
   if (memory.country) parts.push(`country: ${memory.country}`);
   if (memory.notes) parts.push(`notes: ${memory.notes}`);
+  if (memory.mirrorAnswers?.length) {
+    for (const ma of memory.mirrorAnswers) {
+      parts.push(`q: "${ma.question}" → "${ma.answer}"`);
+    }
+  }
   return parts.join("; ");
 }
 
@@ -86,9 +92,19 @@ export async function handleInboundText(params: AgentHandlerParams) {
 
   await space.responding(async () => {
     try {
-      // Pull a city out of the new turn if there is one. The result joins
-      // any city already on file. We do this before the router runs so the
-      // router sees a fully resolved local context in its system prompt.
+      if (user.onboardingStep !== "complete") {
+        await handleOnboarding({
+          client,
+          space,
+          phone,
+          text,
+          isNew: user.isNew,
+          onboardingStep: user.onboardingStep,
+          onLog,
+        });
+        return;
+      }
+
       let resolvedCity: string | undefined = memory.currentCity;
       let weatherLat = memory.latitude;
       let weatherLon = memory.longitude;

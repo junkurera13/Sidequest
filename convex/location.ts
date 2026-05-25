@@ -2,9 +2,9 @@ import { actionGeneric } from "convex/server";
 import { v } from "convex/values";
 
 import {
-  CONVERSATION_MODEL,
   type ClaudeMessageResponse,
 } from "../lib/claudeQuest";
+import { fetchMessages } from "../lib/llmProvider";
 
 type ResolvedLocation = {
   city?: string;
@@ -20,32 +20,20 @@ type ResolvedLocation = {
 export const resolveCurrentLocation = actionGeneric({
   args: { text: v.string() },
   handler: async (_ctx, args): Promise<ResolvedLocation> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return {};
-
     const text = args.text.trim();
     if (text.length < 2) return {};
 
     let city: string | undefined;
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: CONVERSATION_MODEL,
-          max_tokens: 40,
-          system:
-            "extract the single most-specific location the user is at RIGHT NOW from their message. " +
-            "prefer neighborhood + city when both are given (e.g. \"Gangnam, Seoul\"). " +
-            "ignore future trips, places they're going next week, places they used to live. " +
-            "if no clear current location is mentioned, return null. " +
-            "respond with ONLY a JSON object of the shape {\"city\":\"...\"} or {\"city\":null}. no prose, no explanation.",
-          messages: [{ role: "user", content: text }],
-        }),
+      const response = await fetchMessages("conversation", {
+        max_tokens: 40,
+        system:
+          "extract the single most-specific location the user is at RIGHT NOW from their message. " +
+          "prefer neighborhood + city when both are given (e.g. \"Gangnam, Seoul\"). " +
+          "ignore future trips, places they're going next week, places they used to live. " +
+          "if no clear current location is mentioned, return null. " +
+          "respond with ONLY a JSON object of the shape {\"city\":\"...\"} or {\"city\":null}. no prose, no explanation.",
+        messages: [{ role: "user", content: text }],
       });
 
       if (!response.ok) return {};

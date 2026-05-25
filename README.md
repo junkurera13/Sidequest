@@ -29,13 +29,29 @@ npx convex dev
 
 On the first run, Convex will ask you to log in and create or choose a project. It usually writes `NEXT_PUBLIC_CONVEX_URL` into `.env.local` for the Next.js app.
 
-Add the Anthropic key to Convex, because the quest generation action runs inside Convex:
+Add model-provider credentials to Convex, because the quest generation action
+runs inside Convex.
+
+For OpenRouter:
+
+```bash
+npx convex env set LLM_PROVIDER openrouter
+npx convex env set OPENROUTER_API_KEY your_openrouter_key_here
+npx convex env set OPENROUTER_MODEL moonshotai/kimi-k2.6
+```
+
+`OPENROUTER_MODEL` controls both chat/router and quest generation. To split
+them later, set `OPENROUTER_CONVERSATION_MODEL` and/or
+`OPENROUTER_QUEST_MODEL`.
+
+Anthropic is still supported as a fallback:
 
 ```bash
 npx convex env set ANTHROPIC_API_KEY your_anthropic_key_here
 ```
 
-Quest crafting uses Claude Sonnet 4.6 by default. To override (e.g. drop to Haiku for cheap iteration during prompt tuning), set:
+Quest crafting uses Claude Sonnet 4.6 by default when `LLM_PROVIDER` is unset or
+set to `anthropic`. To override it, set:
 
 ```bash
 npx convex env set ANTHROPIC_QUEST_MODEL claude-haiku-4-5-20251001
@@ -62,9 +78,18 @@ NEXT_PUBLIC_SIDEQUEST_PHONE=+15551234567
 
 `NEXT_PUBLIC_SIDEQUEST_PHONE` is the Photon/iMessage number the landing page button texts. Without it, the homepage shows a `Coming soon` placeholder instead of the live `Text Sidequest` button.
 
-Add this in Convex with `npx convex env set` or in the Convex dashboard:
+Add one provider config in Convex with `npx convex env set` or in the Convex
+dashboard:
 
 ```bash
+# OpenRouter
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=your_openrouter_key_here
+OPENROUTER_MODEL=moonshotai/kimi-k2.6
+OPENROUTER_CONVERSATION_MODEL=moonshotai/kimi-k2.6  # optional
+OPENROUTER_QUEST_MODEL=moonshotai/kimi-k2.6         # optional
+
+# Anthropic fallback
 ANTHROPIC_API_KEY=your_anthropic_key_here
 ANTHROPIC_QUEST_MODEL=claude-sonnet-4-6  # optional override; defaults to Sonnet 4.6
 ```

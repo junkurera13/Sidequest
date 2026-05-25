@@ -3,13 +3,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { upsertUserByPhone } from "@/lib/convexFunctions";
 import { clientIpFromHeaders, lookupIpGeo } from "@/lib/ipGeo";
-
-type PhotonUserResponse = {
-  succeed?: boolean;
-  data?: {
-    assignedPhoneNumber?: string;
-  };
-};
+import { createSharedPhotonUser, PhotonSignupError } from "@/lib/photonSignup";
 
 const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
 
@@ -62,60 +56,34 @@ export async function POST(request: Request) {
     );
   }
 
-  const auth = Buffer.from(`${projectId}:${projectSecret}`).toString("base64");
-
-  let photonRes: Response;
+  let assigned: string;
   try {
-    photonRes = await fetch(
-      `https://spectrum.photon.codes/projects/${projectId}/users/`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "shared",
-          phoneNumber: e164,
-        }),
-      },
-    );
+    assigned = await createSharedPhotonUser({
+      projectId,
+      projectSecret,
+      phoneNumber: e164,
+    });
   } catch (cause) {
+    if (cause instanceof PhotonSignupError) {
+      console.error("photon signup failed:", cause.status, cause.body);
+      return Response.json(
+        {
+          error:
+            cause.status === 429
+              ? "line setup is busy rn. wait a few sec and try again."
+              : `couldnt set up your sidequest line (${cause.status}${
+                  cause.message ? `: ${cause.message}` : ""
+                }).`,
+          photonStatus: cause.status,
+          photonMessage: cause.message,
+        },
+        { status: 502 },
+      );
+    }
+
     console.error("photon signup network error:", cause);
     return Response.json(
       { error: "couldnt reach the messaging service. try again." },
-      { status: 502 },
-    );
-  }
-
-  const photonBody = (await photonRes.json().catch(() => ({}))) as
-    | PhotonUserResponse
-    | { error?: { message?: string } };
-
-  if (!photonRes.ok) {
-    console.error("photon signup failed:", photonRes.status, photonBody);
-    const photonMessage =
-      (photonBody as { error?: { message?: string } }).error?.message ??
-      (typeof (photonBody as { message?: unknown }).message === "string"
-        ? ((photonBody as { message?: string }).message as string)
-        : undefined);
-    return Response.json(
-      {
-        error: `couldnt set up your sidequest line (${photonRes.status}${
-          photonMessage ? `: ${photonMessage}` : ""
-        }).`,
-        photonStatus: photonRes.status,
-        photonMessage,
-      },
-      { status: 502 },
-    );
-  }
-
-  const assigned = (photonBody as PhotonUserResponse).data?.assignedPhoneNumber;
-  if (!assigned) {
-    console.error("photon response missing assignedPhoneNumber:", photonBody);
-    return Response.json(
-      { error: "messaging service returned an unexpected response." },
       { status: 502 },
     );
   }

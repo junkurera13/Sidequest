@@ -7,12 +7,11 @@ import {
   type QuestRecord,
 } from "../lib/convexFunctions";
 import {
-  CONVERSATION_MODEL,
-  QUEST_CRAFTING_MODEL,
   extractQuestFromClaudeResponse,
   questTool,
   type ClaudeMessageResponse,
 } from "../lib/claudeQuest";
+import { fetchMessages } from "../lib/llmProvider";
 
 const stopValidator = v.object({
   name: v.string(),
@@ -189,14 +188,6 @@ export const generateAck = actionGeneric({
     localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ ack: string }> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
     const memoryBlock = args.memorySummary?.trim()
       ? `what we know about them: ${args.memorySummary}`
       : "no prior memory";
@@ -209,38 +200,29 @@ export const generateAck = actionGeneric({
       ? `local context: ${args.localContext}`
       : "";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 60,
-        system:
-          "you're sidequest. the user just told u what they want. u're about to make them a plan but it'll take ~10 sec. " +
-          "send ONE quick text to ack what they said and signal u're on it.\n\n" +
-          "rules:\n" +
-          "- tone: high school friend over imessage. all lowercase. under 12 words. no caps, no exclamation marks.\n" +
-          "- react SPECIFICALLY to what they said — vibe, mood, group, time. examples: \"bet, hiking spots incoming\", \"ohh date night, gimme a sec\", \"clubbing edition cooking\", \"chill mode locked in\", \"broke night, no problem\".\n" +
-          "- do NOT invent factual claims: weather, news, current events, prices, distances. you don't know any of that.\n" +
-          "- do NOT list options or preview what u'll suggest. just ack + say u're on it.\n" +
-          "- no preamble. no 'sure!' or 'got it!'. just the text.",
-        messages: [
-          {
-            role: "user",
-            content:
-              `their initial msg: "${args.pendingRequest}"\n` +
-              `their followup answer: "${args.followup}"\n` +
-              `${countryBlock}\n` +
-              (localContextLine ? `${localContextLine}\n` : "") +
-              `${memoryBlock}\n\n` +
-              "write the one ack text.",
-          },
-        ],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 60,
+      system:
+        "you're sidequest. the user just told u what they want. u're about to make them a plan but it'll take ~10 sec. " +
+        "send ONE quick text to ack what they said and signal u're on it.\n\n" +
+        "rules:\n" +
+        "- tone: high school friend over imessage. all lowercase. under 12 words. no caps, no exclamation marks.\n" +
+        "- react SPECIFICALLY to what they said — vibe, mood, group, time. examples: \"bet, hiking spots incoming\", \"ohh date night, gimme a sec\", \"clubbing edition cooking\", \"chill mode locked in\", \"broke night, no problem\".\n" +
+        "- do NOT invent factual claims: weather, news, current events, prices, distances. you don't know any of that.\n" +
+        "- do NOT list options or preview what u'll suggest. just ack + say u're on it.\n" +
+        "- no preamble. no 'sure!' or 'got it!'. just the text.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `their initial msg: "${args.pendingRequest}"\n` +
+            `their followup answer: "${args.followup}"\n` +
+            `${countryBlock}\n` +
+            (localContextLine ? `${localContextLine}\n` : "") +
+            `${memoryBlock}\n\n` +
+            "write the one ack text.",
+        },
+      ],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse;
@@ -273,14 +255,6 @@ export const generateHandoff = actionGeneric({
     localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ text: string }> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
     const memoryBlock = args.memorySummary?.trim()
       ? `what we know about them: ${args.memorySummary}`
       : "no prior memory";
@@ -297,39 +271,30 @@ export const generateHandoff = actionGeneric({
       ? `their followup: "${args.followupAnswer}"`
       : "";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 60,
-        system:
-          "you're sidequest. u just finished making the user a real-world thing to do. " +
-          "u're about to send them the link to the mission card. write ONE short text that hands it off. " +
-          "the link goes on the next line — DO NOT include it yourself.\n\n" +
-          "rules:\n" +
-          "- tone: high school friend over imessage. all lowercase. under 10 words. no caps, no exclamation marks.\n" +
-          "- vary phrasing each time. don't sound canned or like 'ight here u go' / 'here you go' every time.\n" +
-          "- u CAN riff on the quest's theme if it adds energy (e.g. food/cafe/date/late-night/hike) — but DON'T spoil the specific place names.\n" +
-          "- do NOT say 'check this out', 'enjoy', 'hope u like it', or 'lmk what u think'.\n" +
-          "- no preamble. no 'sure!' or 'got it!'. just the one line.",
-        messages: [
-          {
-            role: "user",
-            content:
-              `the quest title is: "${args.title}"\n` +
-              (initialLine ? `${initialLine}\n` : "") +
-              (followupLine ? `${followupLine}\n` : "") +
-              (localContextLine ? `${localContextLine}\n` : "") +
-              `${memoryBlock}\n\n` +
-              "write the one handoff text.",
-          },
-        ],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 60,
+      system:
+        "you're sidequest. u just finished making the user a real-world thing to do. " +
+        "u're about to send them the link to the mission card. write ONE short text that hands it off. " +
+        "the link goes on the next line — DO NOT include it yourself.\n\n" +
+        "rules:\n" +
+        "- tone: high school friend over imessage. all lowercase. under 10 words. no caps, no exclamation marks.\n" +
+        "- vary phrasing each time. don't sound canned or like 'ight here u go' / 'here you go' every time.\n" +
+        "- u CAN riff on the quest's theme if it adds energy (e.g. food/cafe/date/late-night/hike) — but DON'T spoil the specific place names.\n" +
+        "- do NOT say 'check this out', 'enjoy', 'hope u like it', or 'lmk what u think'.\n" +
+        "- no preamble. no 'sure!' or 'got it!'. just the one line.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `the quest title is: "${args.title}"\n` +
+            (initialLine ? `${initialLine}\n` : "") +
+            (followupLine ? `${followupLine}\n` : "") +
+            (localContextLine ? `${localContextLine}\n` : "") +
+            `${memoryBlock}\n\n` +
+            "write the one handoff text.",
+        },
+      ],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse;
@@ -365,14 +330,6 @@ export const generateOutcomeAck = actionGeneric({
     localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ text: string }> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
     const memoryBlock = args.memorySummary?.trim()
       ? `what we know about them: ${args.memorySummary}`
       : "no prior memory";
@@ -392,36 +349,27 @@ export const generateOutcomeAck = actionGeneric({
           ? "lost = they tried it but it didn't hit"
           : "skipped = they didn't go (no judgment, not a fail)";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 60,
-        system:
-          "you're sidequest. the user just told u how their last quest went. react like a friend.\n\n" +
-          "rules:\n" +
-          "- tone: high school friend over imessage. all lowercase. under 14 words. no caps, no exclamation marks.\n" +
-          "- match the energy: 'won' = genuinely hyped for them. 'lost' = chill, no pity, vibe is 'next one's gonna hit'. 'skipped' = zero pressure, easy to come back when they're ready.\n" +
-          "- u CAN reference the quest theme/title if it lands naturally — but don't recap.\n" +
-          "- vary phrasing. don't fall into 'ayy lets gooo' / 'damn ok' / 'all good' every time.\n" +
-          "- no preamble. no 'sure!' or 'got it!'. just the reaction.",
-        messages: [
-          {
-            role: "user",
-            content:
-              `their outcome: ${args.outcome} (${outcomeMeaning})\n` +
-              `${titleLine}\n` +
-              (localContextLine ? `${localContextLine}\n` : "") +
-              `${memoryBlock}\n\n` +
-              "write the one reaction text.",
-          },
-        ],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 60,
+      system:
+        "you're sidequest. the user just told u how their last quest went. react like a friend.\n\n" +
+        "rules:\n" +
+        "- tone: high school friend over imessage. all lowercase. under 14 words. no caps, no exclamation marks.\n" +
+        "- match the energy: 'won' = genuinely hyped for them. 'lost' = chill, no pity, vibe is 'next one's gonna hit'. 'skipped' = zero pressure, easy to come back when they're ready.\n" +
+        "- u CAN reference the quest theme/title if it lands naturally — but don't recap.\n" +
+        "- vary phrasing. don't fall into 'ayy lets gooo' / 'damn ok' / 'all good' every time.\n" +
+        "- no preamble. no 'sure!' or 'got it!'. just the reaction.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `their outcome: ${args.outcome} (${outcomeMeaning})\n` +
+            `${titleLine}\n` +
+            (localContextLine ? `${localContextLine}\n` : "") +
+            `${memoryBlock}\n\n` +
+            "write the one reaction text.",
+        },
+      ],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse;
@@ -452,14 +400,6 @@ export const generateFollowup = actionGeneric({
     localContext: v.optional(v.string()),
   },
   handler: async (_ctx, args): Promise<{ question: string }> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
     const countryHint = args.country
       ? `their phone area code suggests ${args.country}, but trust their message if it says otherwise`
       : "you don't know what country they're in";
@@ -472,43 +412,34 @@ export const generateFollowup = actionGeneric({
       ? `local context (use silently, never re-ask): ${args.localContext}`
       : "";
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 100,
-        system:
-          "you're sidequest, an imessage agent that suggests irl things to do. " +
-          "your job RIGHT NOW: ask ONE short follow-up QUESTION. your reply MUST end with a question mark. " +
-          "never just ack/vibe (no 'bored szn lets cook' / 'on it' / 'gimme a sec'). always end with a real question.\n\n" +
-          "factors that matter (rough priority):\n" +
-          "1. location (city/neighborhood)\n" +
-          "2. vibe/mood (chill, party, romantic, adventurous, foodie, outdoor, indoor)\n" +
-          "3. budget\n" +
-          "4. who they're with (solo, date, friends, family)\n" +
-          "5. when / how much time\n" +
-          "6. energy level (sit & chat, walk around, active)\n" +
-          "7. constraints (dietary, weather, no booze, accessibility)\n\n" +
-          "if memory already covers a factor, do NOT re-ask it. pick the most-useful missing one. " +
-          "if every factor is already covered, ask something that sharpens the plan (e.g. 'food first or drinks first?', 'walk or take the train?', 'down for somewhere new or a usual?'). " +
-          "tone: high school friend over imessage. all lowercase. under 14 words. no preamble. no 'sure!' or 'got it!'. just the question.",
-        messages: [
-          {
-            role: "user",
-            content:
-              `their msg: "${args.request}"\n` +
-              `${memoryBlock}\n` +
-              `context: ${countryHint}\n` +
-              (localContextLine ? `${localContextLine}\n` : "") +
-              "\nwhat's the one followup u'd ask?",
-          },
-        ],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 100,
+      system:
+        "you're sidequest, an imessage agent that suggests irl things to do. " +
+        "your job RIGHT NOW: ask ONE short follow-up QUESTION. your reply MUST end with a question mark. " +
+        "never just ack/vibe (no 'bored szn lets cook' / 'on it' / 'gimme a sec'). always end with a real question.\n\n" +
+        "factors that matter (rough priority):\n" +
+        "1. location (city/neighborhood)\n" +
+        "2. vibe/mood (chill, party, romantic, adventurous, foodie, outdoor, indoor)\n" +
+        "3. budget\n" +
+        "4. who they're with (solo, date, friends, family)\n" +
+        "5. when / how much time\n" +
+        "6. energy level (sit & chat, walk around, active)\n" +
+        "7. constraints (dietary, weather, no booze, accessibility)\n\n" +
+        "if memory already covers a factor, do NOT re-ask it. pick the most-useful missing one. " +
+        "if every factor is already covered, ask something that sharpens the plan (e.g. 'food first or drinks first?', 'walk or take the train?', 'down for somewhere new or a usual?'). " +
+        "tone: high school friend over imessage. all lowercase. under 14 words. no preamble. no 'sure!' or 'got it!'. just the question.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `their msg: "${args.request}"\n` +
+            `${memoryBlock}\n` +
+            `context: ${countryHint}\n` +
+            (localContextLine ? `${localContextLine}\n` : "") +
+            "\nwhat's the one followup u'd ask?",
+        },
+      ],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse;
@@ -552,17 +483,6 @@ export const generate = actionGeneric({
     if (request.length < 8) {
       throw new Error("need a little more to go on.");
     }
-
-    // Add this in Convex with: npx convex env set ANTHROPIC_API_KEY your_key_here
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
-    const model = process.env.ANTHROPIC_QUEST_MODEL ?? QUEST_CRAFTING_MODEL;
 
     const countryLine = args.country
       ? `the user's phone area code suggests they're in ${args.country} — assume that unless their message or memory says otherwise. `
@@ -613,23 +533,14 @@ export const generate = actionGeneric({
     let body: ClaudeMessageResponse | undefined;
 
     for (let attempt = 0; attempt <= MAX_RESUMES; attempt++) {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 8000,
-          system: systemPrompt,
-          tools: [
-            questTool,
-            { type: "web_search_20260209", name: "web_search" },
-          ],
-          messages,
-        }),
+      const response = await fetchMessages("quest", {
+        max_tokens: 8000,
+        system: systemPrompt,
+        tools: [
+          questTool,
+          { type: "web_search_20260209", name: "web_search" },
+        ],
+        messages,
       });
 
       body = (await response.json()) as ClaudeMessageResponse;
@@ -666,25 +577,13 @@ export const generate = actionGeneric({
           "do not write any text outside the tool call.",
       });
 
-      const fallbackResponse = await fetch(
-        "https://api.anthropic.com/v1/messages",
-        {
-          method: "POST",
-          headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 2000,
-            system: systemPrompt,
-            tools: [questTool],
-            tool_choice: { type: "tool", name: questTool.name },
-            messages,
-          }),
-        },
-      );
+      const fallbackResponse = await fetchMessages("quest", {
+        max_tokens: 2000,
+        system: systemPrompt,
+        tools: [questTool],
+        tool_choice: { type: "tool", name: questTool.name },
+        messages,
+      });
 
       body = (await fallbackResponse.json()) as ClaudeMessageResponse;
 

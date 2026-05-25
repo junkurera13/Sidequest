@@ -45,16 +45,28 @@ export default defineSchema({
     onVacation: v.optional(v.boolean()),
     notes: v.optional(v.string()),
     memoryUpdatedAt: v.optional(v.number()),
-    // Captured silently at signup via IP geolocation; used to look up current
-    // weather at quest time so the agent can recommend indoor/outdoor spots
-    // without having to ask.
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
-    // Set when a user signs up through the /signup form (vs. first-touch
-    // via texting the agent directly). assignedPhone is the Photon
-    // pool number we deep-link them to.
     signedUpAt: v.optional(v.number()),
     assignedPhone: v.optional(v.string()),
+    onboardingStep: v.optional(
+      v.union(
+        v.literal("awaiting_cold_response"),
+        v.literal("awaiting_name"),
+        v.literal("awaiting_mirror"),
+        v.literal("awaiting_location"),
+        v.literal("complete"),
+      ),
+    ),
+    mirrorAnswers: v.optional(
+      v.array(
+        v.object({
+          question: v.string(),
+          answer: v.string(),
+          askedAt: v.number(),
+        }),
+      ),
+    ),
   }).index("by_phone", ["phone"]),
   // Short-term conversation context so the router LLM can answer follow-up
   // questions about an active quest, hold chitchat, and remember what was

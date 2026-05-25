@@ -2,10 +2,10 @@ import { actionGeneric } from "convex/server";
 import { v } from "convex/values";
 
 import {
-  CONVERSATION_MODEL,
   type ClaudeMessageResponse,
 } from "../lib/claudeQuest";
 import { patchUserMemory } from "../lib/convexFunctions";
+import { fetchMessages } from "../lib/llmProvider";
 
 const memoryTool = {
   name: "update_user_memory",
@@ -48,42 +48,25 @@ export const updateMemory = actionGeneric({
     existingMemory: v.string(),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    if (!apiKey) {
-      throw new Error(
-        "Missing ANTHROPIC_API_KEY in Convex environment variables.",
-      );
-    }
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: CONVERSATION_MODEL,
-        max_tokens: 600,
-        system:
-          "you maintain memory for sidequest about one user. " +
-          "read the existing memory + new conversation, then call update_user_memory with ONLY the fields that have new or clearer info. " +
-          "never invent facts. if a field is unchanged, omit it. " +
-          "notes: brief, concrete facts about preferences, lifestyle, constraints. merge with existing notes — keep under 500 chars total. drop stale entries. " +
-          "do not output text outside the tool call.",
-        tools: [memoryTool],
-        tool_choice: { type: "tool", name: memoryTool.name },
-        messages: [
-          {
-            role: "user",
-            content:
-              `existing memory: ${args.existingMemory || "(empty)"}\n\n` +
-              `new conversation:\n${args.conversation}\n\n` +
-              "call update_user_memory with only the fields that should change.",
-          },
-        ],
-      }),
+    const response = await fetchMessages("conversation", {
+      max_tokens: 600,
+      system:
+        "you maintain memory for sidequest about one user. " +
+        "read the existing memory + new conversation, then call update_user_memory with ONLY the fields that have new or clearer info. " +
+        "never invent facts. if a field is unchanged, omit it. " +
+        "notes: brief, concrete facts about preferences, lifestyle, constraints. merge with existing notes — keep under 500 chars total. drop stale entries. " +
+        "do not output text outside the tool call.",
+      tools: [memoryTool],
+      tool_choice: { type: "tool", name: memoryTool.name },
+      messages: [
+        {
+          role: "user",
+          content:
+            `existing memory: ${args.existingMemory || "(empty)"}\n\n` +
+            `new conversation:\n${args.conversation}\n\n` +
+            "call update_user_memory with only the fields that should change.",
+        },
+      ],
     });
 
     const body = (await response.json()) as ClaudeMessageResponse;

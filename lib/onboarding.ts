@@ -4,7 +4,6 @@ import type { Space } from "spectrum-ts";
 import {
   advanceOnboarding,
   appendConversationMessage,
-  generateColdQuestReaction,
   resolveCurrentLocation,
   saveMirrorAnswer,
   type OnboardingStep,
@@ -48,31 +47,9 @@ export async function handleOnboarding(params: OnboardingParams) {
 
   if (onboardingStep === "needs_cold_quest") {
     await send(
-      "yo. look around u rn and tell me the weirdest thing u can see",
+      "yo i'm sidequest. i send u small random things to do in real life. " +
+        "some stupid, some actually cool.\n\nwhat's ur name?",
     );
-    await client.mutation(advanceOnboarding, {
-      phone,
-      step: "awaiting_cold_response",
-    });
-    return;
-  }
-
-  if (onboardingStep === "awaiting_cold_response") {
-    let reactionText: string;
-    try {
-      const reaction = await client.action(generateColdQuestReaction, {
-        userAnswer: text,
-      });
-      reactionText = reaction.text;
-    } catch (cause) {
-      onLog?.(`cold quest reaction LLM failed: ${cause}`);
-      reactionText =
-        "lol i literally just made u do that for no reason. " +
-        "but that's kinda what i do — i'm sidequest. " +
-        "i send u small random things to do in real life. " +
-        "some stupid, some actually cool.\n\nwhat's ur name?";
-    }
-    await send(reactionText);
     await client.mutation(advanceOnboarding, {
       phone,
       step: "awaiting_name",

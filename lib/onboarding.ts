@@ -85,10 +85,10 @@ export async function handleOnboarding(params: OnboardingParams) {
       reactionText = reaction.text;
     } catch (cause) {
       onLog?.(`mirror reaction LLM failed: ${cause}`);
-      reactionText =
-        "that's the kinda stuff i wanna send u more of. where u at rn? like neighborhood or city is fine.";
+      reactionText = "that's the kinda stuff i wanna send u more of";
     }
     await send(reactionText);
+    await send("where u at rn? like neighborhood or city is fine.");
     await client.mutation(advanceOnboarding, {
       phone,
       step: "awaiting_location",

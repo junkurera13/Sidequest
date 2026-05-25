@@ -11,7 +11,7 @@ export const generateMirrorReaction = actionGeneric({
   },
   handler: async (_ctx, args): Promise<{ text: string }> => {
     const response = await fetchMessages("conversation", {
-      max_tokens: 80,
+      max_tokens: 4000,
       system:
         "you're sidequest. you just asked a new user to tell you about a time they had a lot of fun. " +
         "they shared a real memory. react like a friend who's genuinely interested — brief, warm, specific to what they said.\n\n" +
@@ -33,6 +33,7 @@ export const generateMirrorReaction = actionGeneric({
     const body = (await response.json()) as ClaudeMessageResponse;
 
     if (!response.ok) {
+      console.error("mirror reaction failed:", response.status, JSON.stringify(body));
       return {
         text: "that's the kinda stuff i wanna send u more of",
       };
@@ -45,6 +46,7 @@ export const generateMirrorReaction = actionGeneric({
       .trim();
 
     if (!text) {
+      console.error("mirror reaction empty text, body:", JSON.stringify(body));
       return {
         text: "that's the kinda stuff i wanna send u more of",
       };

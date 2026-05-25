@@ -8,7 +8,7 @@ import {
   type CountryCode,
 } from "libphonenumber-js";
 
-const PREFILLED_MESSAGE = "yo im bored";
+const PREFILLED_MESSAGE = "hey";
 
 type CountryEntry = {
   code: CountryCode;

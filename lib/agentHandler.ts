@@ -98,7 +98,6 @@ export async function handleInboundText(params: AgentHandlerParams) {
           space,
           phone,
           text,
-          isNew: user.isNew,
           onboardingStep: user.onboardingStep,
           onLog,
         });

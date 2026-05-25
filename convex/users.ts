@@ -4,6 +4,7 @@ import { v } from "convex/values";
 type ConversationState = "idle" | "awaiting_followup";
 
 export type OnboardingStep =
+  | "needs_cold_quest"
   | "awaiting_cold_response"
   | "awaiting_name"
   | "awaiting_mirror"
@@ -107,7 +108,7 @@ export const upsertByPhone = mutationGeneric({
       longitude: args.longitude,
       assignedPhone: args.assignedPhone,
       signedUpAt: args.signedUpAt,
-      onboardingStep: "awaiting_cold_response",
+      onboardingStep: "needs_cold_quest",
     });
 
     return {
@@ -115,7 +116,7 @@ export const upsertByPhone = mutationGeneric({
       state: "idle" as ConversationState,
       pendingRequest: undefined,
       country: args.country,
-      onboardingStep: "awaiting_cold_response" as OnboardingStep,
+      onboardingStep: "needs_cold_quest" as OnboardingStep,
       memory: {
         country: args.country,
         currentCity: args.currentCity,
@@ -220,6 +221,7 @@ export const advanceOnboarding = mutationGeneric({
   args: {
     phone: v.string(),
     step: v.union(
+      v.literal("needs_cold_quest"),
       v.literal("awaiting_cold_response"),
       v.literal("awaiting_name"),
       v.literal("awaiting_mirror"),

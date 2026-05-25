@@ -155,6 +155,7 @@ export const listQuestsByPhone = makeFunctionReference<
 >("quests:listByPhone");
 
 export type OnboardingStep =
+  | "needs_cold_quest"
   | "awaiting_cold_response"
   | "awaiting_name"
   | "awaiting_mirror"

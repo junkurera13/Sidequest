@@ -18,7 +18,6 @@ export type OnboardingParams = {
   space: Space;
   phone: string;
   text: string;
-  isNew: boolean;
   onboardingStep: OnboardingStep;
   onLog?: (line: string) => void;
 };
@@ -37,7 +36,7 @@ async function sendAgent(
 }
 
 export async function handleOnboarding(params: OnboardingParams) {
-  const { client, phone, text, isNew, onboardingStep, onLog } = params;
+  const { client, phone, text, onboardingStep, onLog } = params;
   const send = (msg: string) => sendAgent(params, msg);
 
   await client.mutation(appendConversationMessage, {
@@ -46,10 +45,14 @@ export async function handleOnboarding(params: OnboardingParams) {
     text,
   });
 
-  if (isNew) {
+  if (onboardingStep === "needs_cold_quest") {
     await send(
       "yo. look around u rn and tell me the weirdest thing u can see",
     );
+    await client.mutation(advanceOnboarding, {
+      phone,
+      step: "awaiting_cold_response",
+    });
     return;
   }
 

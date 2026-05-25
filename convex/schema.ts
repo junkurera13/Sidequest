@@ -51,6 +51,7 @@ export default defineSchema({
     assignedPhone: v.optional(v.string()),
     onboardingStep: v.optional(
       v.union(
+        v.literal("needs_cold_quest"),
         v.literal("awaiting_cold_response"),
         v.literal("awaiting_name"),
         v.literal("awaiting_mirror"),

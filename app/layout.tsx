@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
-import { Pixelify_Sans, VT323 } from "next/font/google";
+import {
+  DM_Sans,
+  Newsreader,
+  Pixelify_Sans,
+  VT323,
+} from "next/font/google";
 import "./globals.css";
+
+const sidequestSans = DM_Sans({
+  variable: "--font-sidequest-sans",
+  subsets: ["latin"],
+});
+
+const sidequestSerif = Newsreader({
+  variable: "--font-sidequest-serif",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+});
 
 const pixelifySans = Pixelify_Sans({
   variable: "--font-pixelify-sans",
@@ -15,8 +31,9 @@ const vt323 = VT323({
 });
 
 export const metadata: Metadata = {
-  title: "sidequest",
-  description: "text us. we'll find u something to do.",
+  title: "Sidequest — Make a day worth remembering",
+  description:
+    "Tell Sidequest about a day you loved. When the time is right, your next one will be waiting.",
 };
 
 export default function RootLayout({
@@ -27,9 +44,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${pixelifySans.variable} ${vt323.variable} h-full antialiased`}
+      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${pixelifySans.variable} ${vt323.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-black text-white scanlines flex flex-col font-[family-name:var(--font-pixelify-sans)]">
+      <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
         {children}
       </body>
     </html>

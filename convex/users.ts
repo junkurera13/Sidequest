@@ -4,6 +4,11 @@ import { v } from "convex/values";
 type ConversationState = "idle" | "awaiting_followup";
 
 export type OnboardingStep =
+  | "needs_memory_invite"
+  | "awaiting_memory"
+  | "awaiting_first_window"
+  | "first_quest_ready"
+  // Deprecated pre-renovation steps remain readable during the migration.
   | "needs_cold_quest"
   | "awaiting_cold_response"
   | "awaiting_name"
@@ -108,7 +113,7 @@ export const upsertByPhone = mutationGeneric({
       longitude: args.longitude,
       assignedPhone: args.assignedPhone,
       signedUpAt: args.signedUpAt,
-      onboardingStep: "needs_cold_quest",
+      onboardingStep: "needs_memory_invite",
     });
 
     return {
@@ -116,7 +121,7 @@ export const upsertByPhone = mutationGeneric({
       state: "idle" as ConversationState,
       pendingRequest: undefined,
       country: args.country,
-      onboardingStep: "needs_cold_quest" as OnboardingStep,
+      onboardingStep: "needs_memory_invite" as OnboardingStep,
       memory: {
         country: args.country,
         currentCity: args.currentCity,
@@ -179,6 +184,7 @@ export type UserProfile = {
   memoryUpdatedAt?: number;
   signedUpAt?: number;
   assignedPhone?: string;
+  firstSidequestWindowText?: string;
   latitude?: number;
   longitude?: number;
   onboardingStep?: OnboardingStep;
@@ -209,6 +215,7 @@ export const getByPhone = queryGeneric({
       memoryUpdatedAt: user.memoryUpdatedAt,
       signedUpAt: user.signedUpAt,
       assignedPhone: user.assignedPhone,
+      firstSidequestWindowText: user.firstSidequestWindowText,
       latitude: user.latitude,
       longitude: user.longitude,
       onboardingStep: user.onboardingStep,
@@ -221,6 +228,10 @@ export const advanceOnboarding = mutationGeneric({
   args: {
     phone: v.string(),
     step: v.union(
+      v.literal("needs_memory_invite"),
+      v.literal("awaiting_memory"),
+      v.literal("awaiting_first_window"),
+      v.literal("first_quest_ready"),
       v.literal("needs_cold_quest"),
       v.literal("awaiting_cold_response"),
       v.literal("awaiting_name"),
@@ -251,6 +262,32 @@ export const advanceOnboarding = mutationGeneric({
   },
 });
 
+export const recordFirstSidequestWindow = mutationGeneric({
+  args: {
+    phone: v.string(),
+    windowText: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", args.phone))
+      .unique();
+
+    if (!user) throw new Error("User not found");
+    const windowText = args.windowText.trim();
+    if (!windowText) throw new Error("The first Sidequest window cannot be empty.");
+
+    await ctx.db.patch(user._id, {
+      firstSidequestWindowText: windowText,
+      onboardingStep: "first_quest_ready",
+    });
+    return null;
+  },
+});
+
+// Deprecated. Kept temporarily so old rows and generated clients can migrate
+// without a destructive data change. The new flow stores raw experience
+// memories in `experienceMemories` instead of appending to this user array.
 export const saveMirrorAnswer = mutationGeneric({
   args: {
     phone: v.string(),

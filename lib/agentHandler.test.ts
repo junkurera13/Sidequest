@@ -15,6 +15,7 @@ describe("handleInboundText (router architecture)", () => {
             state: "idle",
             pendingRequest: undefined,
             country: args.country,
+            onboardingStep: "complete",
             memory: {},
           };
         }
@@ -66,6 +67,7 @@ describe("handleInboundText (router architecture)", () => {
             state: "idle",
             pendingRequest: undefined,
             country: "South Korea",
+            onboardingStep: "complete",
             memory: { currentCity: "Seoul" },
           };
         }

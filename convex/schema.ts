@@ -8,6 +8,23 @@ const stop = v.object({
   estimatedCost: v.string(),
 });
 
+const experienceCertainty = v.union(
+  v.literal("fact"),
+  v.literal("hypothesis"),
+);
+
+const experienceNodeKind = v.union(
+  v.literal("person"),
+  v.literal("place"),
+  v.literal("activity"),
+  v.literal("setting"),
+  v.literal("emotion"),
+  v.literal("motif"),
+  v.literal("constraint"),
+  v.literal("context"),
+  v.literal("memory"),
+);
+
 export default defineSchema({
   quests: defineTable({
     shortId: v.string(),
@@ -49,8 +66,15 @@ export default defineSchema({
     longitude: v.optional(v.number()),
     signedUpAt: v.optional(v.number()),
     assignedPhone: v.optional(v.string()),
+    firstSidequestWindowText: v.optional(v.string()),
     onboardingStep: v.optional(
       v.union(
+        v.literal("needs_memory_invite"),
+        v.literal("awaiting_memory"),
+        v.literal("awaiting_first_window"),
+        v.literal("first_quest_ready"),
+        // Deprecated pre-renovation states remain valid while old user rows
+        // transition safely into the new memory-first onboarding.
         v.literal("needs_cold_quest"),
         v.literal("awaiting_cold_response"),
         v.literal("awaiting_name"),
@@ -69,6 +93,50 @@ export default defineSchema({
       ),
     ),
   }).index("by_phone", ["phone"]),
+  experienceMemories: defineTable({
+    phone: v.string(),
+    source: v.union(v.literal("onboarding"), v.literal("reflection")),
+    rawText: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("complete"),
+      v.literal("failed"),
+    ),
+    summary: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    processedAt: v.optional(v.number()),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
+  experienceGraphNodes: defineTable({
+    phone: v.string(),
+    memoryId: v.id("experienceMemories"),
+    key: v.string(),
+    kind: experienceNodeKind,
+    label: v.string(),
+    description: v.string(),
+    certainty: experienceCertainty,
+    confidence: v.number(),
+    evidence: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_memoryId_and_key", ["memoryId", "key"]),
+  experienceGraphEdges: defineTable({
+    phone: v.string(),
+    memoryId: v.id("experienceMemories"),
+    fromNodeId: v.id("experienceGraphNodes"),
+    toNodeId: v.id("experienceGraphNodes"),
+    relationship: v.string(),
+    description: v.string(),
+    certainty: experienceCertainty,
+    confidence: v.number(),
+    evidence: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_memoryId_and_createdAt", ["memoryId", "createdAt"]),
   // Short-term conversation context so the router LLM can answer follow-up
   // questions about an active quest, hold chitchat, and remember what was
   // already asked. Long-term facts still live in the `users` row via

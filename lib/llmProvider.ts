@@ -4,7 +4,7 @@ import {
 } from "./claudeQuest";
 
 export type LlmProvider = "anthropic" | "openrouter";
-export type ModelPurpose = "conversation" | "quest";
+export type ModelPurpose = "conversation" | "quest" | "reflection" | "memory";
 
 type Env = Record<string, string | undefined>;
 
@@ -24,6 +24,8 @@ export function getLlmProvider(env: Env = process.env): LlmProvider {
   return env.OPENROUTER_API_KEY ||
     env.OPENROUTER_MODEL ||
     env.OPENROUTER_CONVERSATION_MODEL ||
+    env.OPENROUTER_REFLECTION_MODEL ||
+    env.OPENROUTER_MEMORY_MODEL ||
     env.OPENROUTER_QUEST_MODEL
     ? "openrouter"
     : "anthropic";
@@ -39,12 +41,23 @@ export function getModelForPurpose(
     const purposeSpecific =
       purpose === "quest"
         ? env.OPENROUTER_QUEST_MODEL
-        : env.OPENROUTER_CONVERSATION_MODEL;
+        : purpose === "memory"
+          ? env.OPENROUTER_MEMORY_MODEL ?? env.OPENROUTER_QUEST_MODEL
+          : purpose === "reflection"
+            ? env.OPENROUTER_REFLECTION_MODEL ?? env.OPENROUTER_CONVERSATION_MODEL
+            : env.OPENROUTER_CONVERSATION_MODEL;
     return purposeSpecific ?? env.OPENROUTER_MODEL ?? OPENROUTER_DEFAULT_MODEL;
   }
 
-  if (purpose === "quest") {
+  if (purpose === "quest" || purpose === "memory") {
+    if (purpose === "memory" && env.ANTHROPIC_MEMORY_MODEL) {
+      return env.ANTHROPIC_MEMORY_MODEL;
+    }
     return env.ANTHROPIC_QUEST_MODEL ?? QUEST_CRAFTING_MODEL;
+  }
+
+  if (purpose === "reflection" && env.ANTHROPIC_REFLECTION_MODEL) {
+    return env.ANTHROPIC_REFLECTION_MODEL;
   }
 
   return env.ANTHROPIC_CONVERSATION_MODEL ?? CONVERSATION_MODEL;

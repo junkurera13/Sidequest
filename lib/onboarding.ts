@@ -4,15 +4,17 @@ import type { Space } from "spectrum-ts";
 import {
   advanceOnboarding,
   appendConversationMessage,
-  generateMirrorReaction,
-  resolveCurrentLocation,
-  saveMirrorAnswer,
+  captureOnboardingMemory,
+  generateMemoryReflection,
+  recordFirstSidequestWindow,
   type OnboardingStep,
 } from "./convexFunctions";
 
-const MIRROR_QUESTION =
-  "tell me about a time u had a lot of fun. a trip, a night, whatever. " +
-  "first thing that comes to mind.";
+export const MEMORY_INVITATION =
+  "tell me about a real day you'd live again — the people, what happened, and why it stayed. messy is good.";
+
+export const FIRST_WINDOW_QUESTION =
+  "when do u have a few hours free? i want to make your first sidequest.";
 
 export type OnboardingParams = {
   client: ConvexHttpClient;
@@ -20,7 +22,6 @@ export type OnboardingParams = {
   phone: string;
   text: string;
   onboardingStep: OnboardingStep;
-  userName?: string;
   onLog?: (line: string) => void;
 };
 
@@ -47,80 +48,61 @@ export async function handleOnboarding(params: OnboardingParams) {
     text,
   });
 
-  if (onboardingStep === "needs_cold_quest") {
-    await send(
-      "yo i'm sidequest. i send u small random things to do in real life. " +
-        "some stupid, some actually cool.\n\nwhat's ur name?",
-    );
+  if (
+    onboardingStep === "needs_memory_invite" ||
+    onboardingStep === "needs_cold_quest" ||
+    onboardingStep === "awaiting_cold_response" ||
+    onboardingStep === "awaiting_name" ||
+    onboardingStep === "awaiting_location"
+  ) {
+    await send(MEMORY_INVITATION);
     await client.mutation(advanceOnboarding, {
       phone,
-      step: "awaiting_name",
+      step: "awaiting_memory",
     });
     return;
   }
 
-  if (onboardingStep === "awaiting_name") {
-    const name = text.trim().split(/\s+/)[0];
-    await client.mutation(advanceOnboarding, {
+  if (
+    onboardingStep === "awaiting_memory" ||
+    onboardingStep === "awaiting_mirror"
+  ) {
+    await client.mutation(captureOnboardingMemory, {
       phone,
-      step: "awaiting_mirror",
-      name,
+      rawText: text,
     });
-    await send(`ok ${name.toLowerCase()}. ${MIRROR_QUESTION}`);
-    return;
-  }
 
-  if (onboardingStep === "awaiting_mirror") {
-    await client.mutation(saveMirrorAnswer, {
-      phone,
-      question: MIRROR_QUESTION,
-      answer: text,
-    });
     let reactionText: string;
     try {
-      const reaction = await client.action(generateMirrorReaction, {
-        mirrorAnswer: text,
-        userName: params.userName ?? "friend",
+      const reaction = await client.action(generateMemoryReflection, {
+        memoryText: text,
       });
       reactionText = reaction.text;
     } catch (cause) {
-      onLog?.(`mirror reaction LLM failed: ${cause}`);
-      reactionText = "that's the kinda stuff i wanna send u more of";
+      onLog?.(`memory reflection LLM failed: ${cause}`);
+      reactionText = "yeah, i can see why that one stayed with u";
     }
-    await send(reactionText);
-    await send("where do u usually hang? like city or neighborhood");
+
     await client.mutation(advanceOnboarding, {
       phone,
-      step: "awaiting_location",
+      step: "awaiting_first_window",
     });
+    await send(reactionText);
+    await send(FIRST_WINDOW_QUESTION);
     return;
   }
 
-  if (onboardingStep === "awaiting_location") {
-    let city: string | undefined;
-    let latitude: number | undefined;
-    let longitude: number | undefined;
-    try {
-      const resolved = await client.action(resolveCurrentLocation, {
-        text,
-      });
-      city = resolved.city;
-      latitude = resolved.latitude;
-      longitude = resolved.longitude;
-    } catch (cause) {
-      onLog?.(`onboarding location resolve failed: ${cause}`);
-    }
-
-    await client.mutation(advanceOnboarding, {
+  if (onboardingStep === "awaiting_first_window") {
+    await client.mutation(recordFirstSidequestWindow, {
       phone,
-      step: "complete",
-      currentCity: city,
-      latitude,
-      longitude,
+      windowText: text,
     });
-    await send(
-      "ok bet. i'll find u saturday. or just text me \"hit me\" whenever.",
-    );
+    await send("perfect. leave it with me.");
+    return;
+  }
+
+  if (onboardingStep === "first_quest_ready") {
+    await send("i'm still making yours. i'll text u when it's ready.");
     return;
   }
 

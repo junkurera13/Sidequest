@@ -155,6 +155,11 @@ export const listQuestsByPhone = makeFunctionReference<
 >("quests:listByPhone");
 
 export type OnboardingStep =
+  | "needs_memory_invite"
+  | "awaiting_memory"
+  | "awaiting_first_window"
+  | "first_quest_ready"
+  // Deprecated pre-renovation steps remain readable during the migration.
   | "needs_cold_quest"
   | "awaiting_cold_response"
   | "awaiting_name"
@@ -182,6 +187,7 @@ export type UserProfile = {
   memoryUpdatedAt?: number;
   signedUpAt?: number;
   assignedPhone?: string;
+  firstSidequestWindowText?: string;
   latitude?: number;
   longitude?: number;
   onboardingStep?: OnboardingStep;
@@ -278,11 +284,17 @@ export const resetUserToIdle = makeFunctionReference<
   null
 >("users:resetToIdle");
 
-export const generateMirrorReaction = makeFunctionReference<
+export const generateMemoryReflection = makeFunctionReference<
   "action",
-  { mirrorAnswer: string; userName: string },
+  { memoryText: string },
   { text: string }
->("onboarding:generateMirrorReaction");
+>("onboarding:generateMemoryReflection");
+
+export const captureOnboardingMemory = makeFunctionReference<
+  "mutation",
+  { phone: string; rawText: string },
+  { memoryId: string }
+>("experienceGraph:captureOnboardingMemory");
 
 export const advanceOnboarding = makeFunctionReference<
   "mutation",
@@ -297,11 +309,11 @@ export const advanceOnboarding = makeFunctionReference<
   null
 >("users:advanceOnboarding");
 
-export const saveMirrorAnswer = makeFunctionReference<
+export const recordFirstSidequestWindow = makeFunctionReference<
   "mutation",
-  { phone: string; question: string; answer: string },
+  { phone: string; windowText: string },
   null
->("users:saveMirrorAnswer");
+>("users:recordFirstSidequestWindow");
 
 export type GenerateQuestReference = FunctionReference<
   "action",

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #f3efe7;
+  --foreground: #1c1c19;
   --pixel-yellow: #f8e600;
   --pixel-pink: #ff3dec;
   --pixel-green: #08ff80;
@@ -34,8 +34,9 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  -webkit-font-smoothing: none;
-  font-smooth: never;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: always;
 }
 
 /* Re-enable smooth, antialiased text on specific containers that want a

@@ -40,6 +40,19 @@ describe("llm provider config", () => {
     ).toBe("google/gemini-2.5-pro");
   });
 
+  it("lets the immediate reflection and deeper memory analysis use different models", () => {
+    const env = {
+      OPENROUTER_MODEL: "shared",
+      OPENROUTER_CONVERSATION_MODEL: "fast-chat",
+      OPENROUTER_REFLECTION_MODEL: "fast-reflection",
+      OPENROUTER_QUEST_MODEL: "strong-quest",
+      OPENROUTER_MEMORY_MODEL: "strong-memory",
+    };
+
+    expect(getModelForPurpose("reflection", env)).toBe("fast-reflection");
+    expect(getModelForPurpose("memory", env)).toBe("strong-memory");
+  });
+
   it("drops Anthropic-only cache_control fields for OpenRouter", () => {
     expect(
       stripOpenRouterIncompatibleFields({

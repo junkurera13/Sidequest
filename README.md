@@ -1,8 +1,8 @@
-# Sidequest MVP
+# Sidequest
 
-Sidequest is an iMessage-based AI agent that assigns real-world missions when people are bored. This repo is the first web foundation only: a Next.js internal quest generator and public mission-file pages.
+Sidequest is an agent that composes real-world experiences that feel strangely meant for the person receiving them. It begins as a quiet iMessage relationship and opens into a crafted mobile experience.
 
-Photon/iMessage is intentionally not integrated yet.
+The product is being renovated block by block. [VISION.md](./VISION.md) is the source of truth for the new direction; legacy quest and web surfaces remain temporarily while their replacements are built.
 
 ## Stack
 
@@ -87,10 +87,14 @@ LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_openrouter_key_here
 OPENROUTER_MODEL=moonshotai/kimi-k2.6
 OPENROUTER_CONVERSATION_MODEL=moonshotai/kimi-k2.6  # optional
+OPENROUTER_REFLECTION_MODEL=your_fast_model          # optional
+OPENROUTER_MEMORY_MODEL=your_strong_model            # optional
 OPENROUTER_QUEST_MODEL=moonshotai/kimi-k2.6         # optional
 
 # Anthropic fallback
 ANTHROPIC_API_KEY=your_anthropic_key_here
+ANTHROPIC_REFLECTION_MODEL=claude-haiku-4-5-20251001 # optional
+ANTHROPIC_MEMORY_MODEL=claude-sonnet-4-6              # optional
 ANTHROPIC_QUEST_MODEL=claude-sonnet-4-6  # optional override; defaults to Sonnet 4.6
 ```
 

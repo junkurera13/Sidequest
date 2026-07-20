@@ -99,7 +99,6 @@ export async function handleInboundText(params: AgentHandlerParams) {
           phone,
           text,
           onboardingStep: user.onboardingStep,
-          userName: memory.name,
           onLog,
         });
         return;

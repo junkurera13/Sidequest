@@ -5,7 +5,12 @@ if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
 }
 
 const result = await generateText({
-  model: "openai/gpt-5.4-mini",
+  model: "openai/gpt-5.6-luna",
+  providerOptions: {
+    gateway: {
+      models: ["deepseek/deepseek-v4-pro"],
+    },
+  },
   prompt: "Reply with exactly the single word: connected",
   maxOutputTokens: 16,
 });

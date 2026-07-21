@@ -46,35 +46,43 @@ export default function BottomNavigation({
   }
 
   return (
-    <nav className={styles.dock} aria-label="Primary">
-      <div
-        className={styles.tabs}
-        role="tablist"
-        aria-label="Sidequest views"
-        data-active={activeIndex}
-      >
-        <span className={styles.candy} aria-hidden="true" />
+    <div className={styles.chrome}>
+      <nav className={styles.dock} aria-label="Primary">
+        <div
+          className={styles.tabs}
+          role="tablist"
+          aria-label="Sidequest views"
+          data-active={activeIndex}
+        >
+          <span className={styles.candy} aria-hidden="true" />
 
-        {SIDEQUEST_TABS.map((tab, index) => (
-          <button
-            className={styles.tab}
-            type="button"
-            role="tab"
-            id={`sidequest-tab-${index}`}
-            aria-controls={`sidequest-panel-${index}`}
-            aria-selected={activeIndex === index}
-            tabIndex={activeIndex === index ? 0 : -1}
-            key={tab}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
-            onClick={() => selectTab(index as SidequestTabIndex)}
-            onKeyDown={handleKeyDown}
-          >
-            <span>{tab}</span>
-          </button>
-        ))}
-      </div>
-    </nav>
+          {SIDEQUEST_TABS.map((tab, index) => (
+            <button
+              className={styles.tab}
+              type="button"
+              role="tab"
+              id={`sidequest-tab-${index}`}
+              aria-controls={`sidequest-panel-${index}`}
+              aria-selected={activeIndex === index}
+              tabIndex={activeIndex === index ? 0 : -1}
+              key={tab}
+              ref={(element) => {
+                tabRefs.current[index] = element;
+              }}
+              onClick={() => selectTab(index as SidequestTabIndex)}
+              onKeyDown={handleKeyDown}
+            >
+              <span>{tab}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <button
+        type="button"
+        className={styles.profile}
+        aria-label="Profile"
+      />
+    </div>
   );
 }

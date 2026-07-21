@@ -63,6 +63,7 @@ const nodeDraftValidator = v.object({
   description: v.string(),
   certainty: certaintyValidator,
   confidence: v.number(),
+  salience: v.number(),
   evidence: v.string(),
 });
 
@@ -79,9 +80,9 @@ const edgeDraftValidator = v.object({
   evidence: v.string(),
 });
 
-function assertConfidence(value: number) {
+function assertUnitValue(value: number, field: string) {
   if (!Number.isFinite(value) || value < 0 || value > 1) {
-    throw new Error("Experience graph confidence must be between 0 and 1.");
+    throw new Error(`Experience graph ${field} must be between 0 and 1.`);
   }
 }
 
@@ -154,7 +155,8 @@ export const saveAnalysis = internalMutation({
     const nodeIds = new Map<string, Id<"experienceGraphNodes">>();
 
     for (const node of args.nodes) {
-      assertConfidence(node.confidence);
+      assertUnitValue(node.confidence, "confidence");
+      assertUnitValue(node.salience, "salience");
       if (nodeIds.has(node.key)) {
         throw new Error(`Duplicate experience graph node key: ${node.key}`);
       }
@@ -169,8 +171,8 @@ export const saveAnalysis = internalMutation({
     }
 
     for (const edge of args.edges) {
-      assertConfidence(edge.confidence);
-      assertConfidence(edge.strength);
+      assertUnitValue(edge.confidence, "confidence");
+      assertUnitValue(edge.strength, "strength");
       const fromNodeId = nodeIds.get(edge.fromKey);
       const toNodeId = nodeIds.get(edge.toKey);
       if (!fromNodeId || !toNodeId) {

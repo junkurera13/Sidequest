@@ -21,6 +21,7 @@ export type ExperienceGraphNodeDraft = {
   description: string;
   certainty: ExperienceCertainty;
   confidence: number;
+  salience: number;
   evidence: string;
 };
 
@@ -138,6 +139,10 @@ export function validateExperienceGraph(value: unknown): ExperienceGraphDraft {
       confidence: requireConfidence(
         node.confidence,
         `nodes.${index}.confidence`,
+      ),
+      salience: requireConfidence(
+        node.salience,
+        `nodes.${index}.salience`,
       ),
       evidence: requireString(node.evidence, `nodes.${index}.evidence`, 420),
     };

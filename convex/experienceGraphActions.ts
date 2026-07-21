@@ -49,6 +49,7 @@ const experienceGraphTool = {
             "description",
             "certainty",
             "confidence",
+            "salience",
             "evidence",
           ],
           properties: {
@@ -73,6 +74,13 @@ const experienceGraphTool = {
             description: { type: "string" },
             certainty: { type: "string", enum: ["fact", "hypothesis"] },
             confidence: { type: "number", minimum: 0, maximum: 1 },
+            salience: {
+              type: "number",
+              minimum: 0,
+              maximum: 1,
+              description:
+                "How central this thing appears to be in the person's lived world, based only on explicit emphasis, enduring emotion, recurrence, and meaningful relationships. This is importance, not confidence.",
+            },
             evidence: {
               type: "string",
               description:
@@ -163,7 +171,8 @@ export const analyzeMemory = internalAction({
           "- nodes are things: use concise nouns or noun phrases. relationships carry the verbs and conclusions. pattern nodes are the only intentional exception.\n" +
           "- do not create two nodes for one underlying thing merely to encode a property. for example, use one cycling activity node and express familiarity through an edge.\n" +
           "- use one primary category and one precise snake_case subtype for every node.\n" +
-          "- confidence means how sure the interpretation is. strength means how much the relationship mattered. never confuse them.\n" +
+          "- confidence means how sure the interpretation is. strength means how much a relationship mattered. salience means how central a node appears in the person's lived world. never confuse them.\n" +
+          "- calibrate salience from evidence: 0.9-1 only for exceptionally emphasized or repeatedly central things; 0.7-0.89 for clearly meaningful things; 0.4-0.69 for supporting details; below 0.4 for incidental context. category must never create a size bias.\n" +
           "- familiarity records the hidden balance of known and new for future composition; never turn it into user-facing analytical language.\n" +
           "- capture what the presence of other people enabled, not only generic labels like friends or family.\n" +
           "- capture meaningful relationships among people, activity, place, condition, feeling, and afterglow.\n" +

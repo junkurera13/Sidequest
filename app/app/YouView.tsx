@@ -20,6 +20,19 @@ import {
   saveOrbLayout,
   type OrbPosition,
 } from "./orbLayoutPersistence";
+import { categoryOrbGradient, categoryPalette } from "./categoryAppearance";
+import {
+  CURSOR_DAMPING,
+  CURSOR_INFLUENCE_PADDING,
+  CURSOR_MAX_RADIUS_FRACTION,
+  CURSOR_MAX_WORLD_OFFSET,
+  LABEL_EMPHASIS_DAMPING,
+  cursorVicinityInfluence,
+  focusDistance,
+  frameDamping,
+  heroLabelScale,
+} from "./orbMotion";
+import { MIN_ORB_RADIUS, SELF_ORB_RADIUS } from "./orbSizing";
 import styles from "./YouView.module.css";
 
 const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
@@ -64,7 +77,7 @@ function createOrbTexture(node: WorldNode) {
   const context = canvas.getContext("2d");
   if (!context) return null;
 
-  const [light, mid, dark] = node.palette;
+  const [light, mid, dark] = categoryPalette(node.category);
   const base = context.createLinearGradient(0, 0, 0, canvas.height);
   base.addColorStop(0, light);
   base.addColorStop(0.48, mid);
@@ -281,7 +294,7 @@ export default function YouView() {
     controls.rotateSpeed = 0.5;
     controls.zoomSpeed = 0.65;
     controls.panSpeed = 0.5;
-    controls.minDistance = 5.8;
+    controls.minDistance = 2.6;
     controls.maxDistance = 24;
     controls.screenSpacePanning = true;
     controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
@@ -322,6 +335,9 @@ export default function YouView() {
     const meshes = new Map<string, THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhysicalMaterial>>();
     const textures: THREE.Texture[] = [];
     const baseOpacities = new Map<string, number>();
+    const restPositions = new Map<string, THREE.Vector3>();
+    const cursorOffsets = new Map<string, THREE.Vector3>();
+    const labelEmphasis = new Map<string, number>();
 
     for (const node of worldNodes) {
       const texture = createOrbTexture(node);
@@ -353,6 +369,9 @@ export default function YouView() {
       world.add(mesh);
       meshes.set(node.key, mesh);
       baseOpacities.set(node.key, baseOpacity);
+      restPositions.set(node.key, mesh.position.clone());
+      cursorOffsets.set(node.key, new THREE.Vector3());
+      labelEmphasis.set(node.key, 0);
 
       if (node.category === "self" || node.category === "experience") {
         const halo = new THREE.Mesh(
@@ -404,14 +423,152 @@ export default function YouView() {
     const panRight = new THREE.Vector3();
     const panUp = new THREE.Vector3();
     const panOffset = new THREE.Vector3();
+    const pointerCanvasPosition = new THREE.Vector2();
+    const clock = new THREE.Clock();
+    const focusWorldPosition = new THREE.Vector3();
+    const focusViewDirection = new THREE.Vector3();
+    const cameraDestination = new THREE.Vector3();
+    const targetDestination = new THREE.Vector3();
+    let cameraBookmark: {
+      position: THREE.Vector3;
+      target: THREE.Vector3;
+    } | null = null;
+    let cameraFlightMode: "focus" | "restore" | null = null;
+    let hasCameraDestination = false;
+    let lastFocusKey: string | null = null;
+    let restorationPending = false;
     let hoveredKey: string | null = null;
     let dragCandidateKey: string | null = null;
     let draggingKey: string | null = null;
     let activePointerId: number | null = null;
     let animationFrame = 0;
+    let pointerInsideCanvas = false;
     let reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    let hasFinePointer = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+
+    function isCameraFlightActive() {
+      return hasCameraDestination;
+    }
+
+    function completeCameraFlight() {
+      if (!hasCameraDestination) return;
+
+      camera.position.copy(cameraDestination);
+      controls.target.copy(targetDestination);
+      camera.updateMatrixWorld();
+      controls.update();
+      camera.position.copy(cameraDestination);
+      controls.target.copy(targetDestination);
+      camera.updateMatrixWorld();
+
+      if (cameraFlightMode === "restore") {
+        cameraBookmark = null;
+      }
+      hasCameraDestination = false;
+      cameraFlightMode = null;
+      controls.enabled = activePointerId === null;
+    }
+
+    function cancelCameraFlight() {
+      if (!hasCameraDestination) return;
+
+      const wasRestoring = cameraFlightMode === "restore";
+      hasCameraDestination = false;
+      cameraFlightMode = null;
+      restorationPending = false;
+      if (wasRestoring && selectedKeyRef.current === null) {
+        cameraBookmark = null;
+      }
+      controls.enabled = activePointerId === null;
+    }
+
+    function resetCursorOffset(nodeKey: string) {
+      const mesh = meshes.get(nodeKey);
+      const restPosition = restPositions.get(nodeKey);
+      const offset = cursorOffsets.get(nodeKey);
+      if (!mesh || !restPosition || !offset || offset.lengthSq() === 0) return;
+
+      offset.set(0, 0, 0);
+      mesh.position.copy(restPosition);
+      updateConnectedLines(nodeKey);
+    }
+
+    function requestCameraFocus(nodeKey: string) {
+      const mesh = meshes.get(nodeKey);
+      const node = WORLD_NODE_BY_KEY.get(nodeKey);
+      if (!mesh || !node) return;
+
+      resetCursorOffset(nodeKey);
+      mesh.getWorldPosition(focusWorldPosition);
+      focusViewDirection
+        .copy(camera.position)
+        .sub(controls.target)
+        .normalize();
+      if (focusViewDirection.lengthSq() === 0) {
+        camera.getWorldDirection(focusViewDirection).multiplyScalar(-1);
+      }
+
+      targetDestination.copy(focusWorldPosition);
+      cameraDestination
+        .copy(focusWorldPosition)
+        .addScaledVector(focusViewDirection, focusDistance(node.radius));
+      cameraFlightMode = "focus";
+      hasCameraDestination = true;
+      restorationPending = false;
+      controls.enabled = false;
+    }
+
+    function requestCameraRestore() {
+      if (!cameraBookmark) return;
+
+      cameraDestination.copy(cameraBookmark.position);
+      targetDestination.copy(cameraBookmark.target);
+      cameraFlightMode = "restore";
+      hasCameraDestination = true;
+      restorationPending = false;
+      controls.enabled = false;
+    }
+
+    function syncCameraSelection() {
+      const selected = selectedKeyRef.current;
+      if (selected !== lastFocusKey) {
+        if (selected) {
+          if (!cameraBookmark) {
+            cameraBookmark = {
+              position: camera.position.clone(),
+              target: controls.target.clone(),
+            };
+          }
+          requestCameraFocus(selected);
+        } else if (cameraBookmark) {
+          restorationPending = true;
+          if (!draggingKey) requestCameraRestore();
+        }
+        lastFocusKey = selected;
+      }
+
+      if (
+        restorationPending &&
+        !selected &&
+        !draggingKey &&
+        !hasCameraDestination
+      ) {
+        requestCameraRestore();
+      }
+    }
+
+    function updatePointerCanvasPosition(event: PointerEvent) {
+      const rect = canvasElement.getBoundingClientRect();
+      pointerCanvasPosition.set(
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+      pointerInsideCanvas = true;
+    }
 
     function updatePointer(event: PointerEvent) {
       const rect = canvasElement.getBoundingClientRect();
@@ -444,17 +601,18 @@ export default function YouView() {
 
     function persistOrbPositions() {
       const positions = new Map<string, OrbPosition>();
-      for (const [key, mesh] of meshes) {
+      for (const [key, restPosition] of restPositions) {
         positions.set(key, [
-          mesh.position.x,
-          mesh.position.y,
-          mesh.position.z,
+          restPosition.x,
+          restPosition.y,
+          restPosition.z,
         ]);
       }
       saveOrbLayout(layoutStorage, positions);
     }
 
     function onPointerMove(event: PointerEvent) {
+      updatePointerCanvasPosition(event);
       if (
         activePointerId !== null &&
         event.pointerId !== activePointerId
@@ -471,15 +629,23 @@ export default function YouView() {
 
         if (!draggingKey && movement > 4) {
           draggingKey = dragCandidateKey;
+          cancelCameraFlight();
           selectedKeyRef.current = null;
           setSelectedKey(null);
         }
 
         if (draggingKey) {
           const mesh = meshes.get(draggingKey);
+          const restPosition = restPositions.get(draggingKey);
+          const cursorOffset = cursorOffsets.get(draggingKey);
           updatePointer(event);
 
-          if (mesh && raycaster.ray.intersectPlane(dragPlane, dragIntersection)) {
+          if (
+            mesh &&
+            restPosition &&
+            cursorOffset &&
+            raycaster.ray.intersectPlane(dragPlane, dragIntersection)
+          ) {
             draggedWorldPosition.copy(dragIntersection).add(dragOffset);
             world.worldToLocal(draggedWorldPosition);
             draggedWorldPosition.set(
@@ -487,7 +653,9 @@ export default function YouView() {
               softenBoundary(draggedWorldPosition.y, 3.8),
               softenBoundary(draggedWorldPosition.z, 2.8),
             );
-            mesh.position.copy(draggedWorldPosition);
+            restPosition.copy(draggedWorldPosition);
+            cursorOffset.set(0, 0, 0);
+            mesh.position.copy(restPosition);
             updateConnectedLines(draggingKey);
           }
 
@@ -507,6 +675,7 @@ export default function YouView() {
     function onPointerDown(event: PointerEvent) {
       if (activePointerId !== null) return;
 
+      updatePointerCanvasPosition(event);
       pointerStart.set(event.clientX, event.clientY);
       canvasElement.style.cursor = "grabbing";
       setHasInteracted(true);
@@ -517,13 +686,17 @@ export default function YouView() {
         event.ctrlKey ||
         event.metaKey;
       const nodeKey = isWorldGesture ? null : (pickNode(event) ?? null);
-      if (!nodeKey) return;
+      if (!nodeKey) {
+        cancelCameraFlight();
+        return;
+      }
 
       const mesh = meshes.get(nodeKey);
       if (!mesh) return;
 
       event.preventDefault();
       event.stopImmediatePropagation();
+      resetCursorOffset(nodeKey);
       activePointerId = event.pointerId;
       dragCandidateKey = nodeKey;
       controls.enabled = false;
@@ -572,7 +745,7 @@ export default function YouView() {
         activePointerId = null;
         dragCandidateKey = null;
         draggingKey = null;
-        controls.enabled = true;
+        controls.enabled = !hasCameraDestination;
         if (movedOrb) persistOrbPositions();
         hoveredKey = pickNode(event) ?? null;
         canvasElement.style.cursor = hoveredKey ? "move" : "grab";
@@ -592,13 +765,14 @@ export default function YouView() {
       activePointerId = null;
       dragCandidateKey = null;
       draggingKey = null;
-      controls.enabled = true;
+      controls.enabled = !hasCameraDestination;
       if (movedOrb) persistOrbPositions();
       canvasElement.style.cursor = "grab";
     }
 
     function onWheel(event: WheelEvent) {
       setHasInteracted(true);
+      cancelCameraFlight();
 
       // Browsers expose a trackpad pinch as a wheel event with ctrlKey set.
       // Leave those events to OrbitControls; ordinary two-finger movement pans.
@@ -639,18 +813,37 @@ export default function YouView() {
     }
 
     function onPointerLeave() {
+      pointerInsideCanvas = false;
       if (activePointerId !== null) return;
       hoveredKey = null;
       canvasElement.style.cursor = "grab";
     }
 
+    function onPointerEnter(event: PointerEvent) {
+      updatePointerCanvasPosition(event);
+    }
+
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const finePointerQuery = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    );
     const onMotionPreference = () => {
       reducedMotion = motionQuery.matches;
       controls.enableDamping = !reducedMotion;
+      if (reducedMotion) {
+        for (const node of worldNodes) resetCursorOffset(node.key);
+        completeCameraFlight();
+      }
+    };
+    const onFinePointerPreference = () => {
+      hasFinePointer = finePointerQuery.matches;
     };
     motionQuery.addEventListener("change", onMotionPreference);
+    finePointerQuery.addEventListener("change", onFinePointerPreference);
+    onMotionPreference();
+    onFinePointerPreference();
 
+    canvasElement.addEventListener("pointerenter", onPointerEnter);
     canvasElement.addEventListener("pointermove", onPointerMove, true);
     canvasElement.addEventListener("pointerdown", onPointerDown, true);
     canvasElement.addEventListener("pointerup", onPointerUp, true);
@@ -667,6 +860,19 @@ export default function YouView() {
     const labelPosition = new THREE.Vector3();
     const viewPosition = new THREE.Vector3();
     const scaleVector = new THREE.Vector3();
+    const cursorWorldPosition = new THREE.Vector3();
+    const cursorProjectedPosition = new THREE.Vector3();
+    const cursorViewPosition = new THREE.Vector3();
+    const cameraRight = new THREE.Vector3();
+    const cameraUp = new THREE.Vector3();
+    const cursorAwayWorld = new THREE.Vector3();
+    const cursorAwayLocal = new THREE.Vector3();
+    const cursorTargetOffset = new THREE.Vector3();
+    const zeroCursorOffset = new THREE.Vector3();
+    const previousCursorOffset = new THREE.Vector3();
+    const nextMeshPosition = new THREE.Vector3();
+    const worldQuaternion = new THREE.Quaternion();
+    const inverseWorldQuaternion = new THREE.Quaternion();
     const connectedKeys = new Set<string>();
     const verticalProjectionScale =
       1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)));
@@ -679,14 +885,158 @@ export default function YouView() {
       camera.updateProjectionMatrix();
     }
 
+    function applyCursorInfluence(deltaSeconds: number) {
+      const eligible =
+        hasFinePointer &&
+        pointerInsideCanvas &&
+        selectedKeyRef.current === null &&
+        draggingKey === null &&
+        !isCameraFlightActive() &&
+        !reducedMotion;
+      let influencedKey: string | null = null;
+      let highestInfluence = 0;
+      let closestSurfaceDistance = Number.POSITIVE_INFINITY;
+      let influencedScreenDeltaX = 0;
+      let influencedScreenDeltaY = 0;
+
+      if (eligible) {
+        for (const node of worldNodes) {
+          const mesh = meshes.get(node.key);
+          if (!mesh) continue;
+
+          mesh.getWorldPosition(cursorWorldPosition);
+          cursorProjectedPosition.copy(cursorWorldPosition).project(camera);
+          cursorViewPosition
+            .copy(cursorWorldPosition)
+            .applyMatrix4(camera.matrixWorldInverse);
+          const depth = -cursorViewPosition.z;
+          if (cursorProjectedPosition.z > 1 || depth <= 0) continue;
+
+          const centerX =
+            (cursorProjectedPosition.x * 0.5 + 0.5) *
+            containerElement.clientWidth;
+          const centerY =
+            (-cursorProjectedPosition.y * 0.5 + 0.5) *
+            containerElement.clientHeight;
+          const screenDeltaX = pointerCanvasPosition.x - centerX;
+          const screenDeltaY = pointerCanvasPosition.y - centerY;
+          const distance = Math.hypot(screenDeltaX, screenDeltaY);
+          const projectedRadius =
+            node.radius *
+            mesh.scale.x *
+            containerElement.clientHeight *
+            verticalProjectionScale /
+            depth;
+          if (distance > projectedRadius + CURSOR_INFLUENCE_PADDING) continue;
+
+          const influence = cursorVicinityInfluence(
+            distance,
+            projectedRadius,
+          );
+          if (influence <= 0) continue;
+
+          const surfaceDistance = Math.abs(distance - projectedRadius);
+          if (
+            influence > highestInfluence ||
+            (influence === highestInfluence &&
+              surfaceDistance < closestSurfaceDistance)
+          ) {
+            influencedKey = node.key;
+            highestInfluence = influence;
+            closestSurfaceDistance = surfaceDistance;
+            influencedScreenDeltaX = screenDeltaX;
+            influencedScreenDeltaY = screenDeltaY;
+          }
+        }
+      }
+
+      cursorTargetOffset.set(0, 0, 0);
+      if (influencedKey) {
+        cameraRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+        cameraUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+        cursorAwayWorld
+          .copy(cameraRight)
+          .multiplyScalar(-influencedScreenDeltaX)
+          .addScaledVector(cameraUp, influencedScreenDeltaY);
+
+        if (cursorAwayWorld.lengthSq() > 0.000001) {
+          world.getWorldQuaternion(worldQuaternion);
+          inverseWorldQuaternion.copy(worldQuaternion).invert();
+          cursorAwayLocal
+            .copy(cursorAwayWorld)
+            .normalize()
+            .applyQuaternion(inverseWorldQuaternion);
+          const node = WORLD_NODE_BY_KEY.get(influencedKey);
+          if (node) {
+            const maximumOffset = Math.min(
+              node.radius * CURSOR_MAX_RADIUS_FRACTION,
+              CURSOR_MAX_WORLD_OFFSET,
+            );
+            cursorTargetOffset
+              .copy(cursorAwayLocal)
+              .multiplyScalar(highestInfluence * maximumOffset);
+          }
+        }
+      }
+
+      const alpha = frameDamping(deltaSeconds, CURSOR_DAMPING);
+      for (const node of worldNodes) {
+        const mesh = meshes.get(node.key);
+        const restPosition = restPositions.get(node.key);
+        const offset = cursorOffsets.get(node.key);
+        if (!mesh || !restPosition || !offset) continue;
+
+        previousCursorOffset.copy(offset);
+        if (reducedMotion) {
+          offset.set(0, 0, 0);
+        } else {
+          offset.lerp(
+            node.key === influencedKey
+              ? cursorTargetOffset
+              : zeroCursorOffset,
+            alpha,
+          );
+        }
+        nextMeshPosition.copy(restPosition).add(offset);
+        mesh.position.copy(nextMeshPosition);
+
+        if (previousCursorOffset.distanceTo(offset) > 0.0001) {
+          updateConnectedLines(node.key);
+        }
+      }
+    }
+
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(containerElement);
     resize();
 
     function render() {
       animationFrame = window.requestAnimationFrame(render);
-      if (!reducedMotion) controls.update();
+      const deltaSeconds = clock.getDelta();
+      syncCameraSelection();
+
+      if (hasCameraDestination) {
+        controls.enabled = false;
+        if (reducedMotion) {
+          completeCameraFlight();
+        } else {
+          const alpha = frameDamping(deltaSeconds);
+          camera.position.lerp(cameraDestination, alpha);
+          controls.target.lerp(targetDestination, alpha);
+          controls.update();
+
+          if (
+            camera.position.distanceTo(cameraDestination) <= 0.005 &&
+            controls.target.distanceTo(targetDestination) <= 0.003
+          ) {
+            completeCameraFlight();
+          }
+        }
+      } else if (!reducedMotion) {
+        controls.update();
+      }
       camera.updateMatrixWorld();
+      applyCursorInfluence(deltaSeconds);
 
       const selected = selectedKeyRef.current;
       connectedKeys.clear();
@@ -743,14 +1093,35 @@ export default function YouView() {
           1.08,
         );
         const orbScale = THREE.MathUtils.clamp(
-          THREE.MathUtils.mapLinear(node.radius, 0.34, 0.9, 0.82, 1.22),
+          THREE.MathUtils.mapLinear(
+            node.radius,
+            MIN_ORB_RADIUS,
+            SELF_ORB_RADIUS,
+            0.82,
+            1.22,
+          ),
           0.82,
           1.22,
         );
-        const labelScale = THREE.MathUtils.clamp(
+        const baseLabelScale = THREE.MathUtils.clamp(
           distanceScale * orbScale,
           0.72,
           1.28,
+        );
+        const targetLabelEmphasis = isSelected ? 1 : 0;
+        const currentLabelEmphasis = labelEmphasis.get(node.key) ?? 0;
+        const nextLabelEmphasis = reducedMotion
+          ? targetLabelEmphasis
+          : THREE.MathUtils.lerp(
+              currentLabelEmphasis,
+              targetLabelEmphasis,
+              frameDamping(deltaSeconds, LABEL_EMPHASIS_DAMPING),
+            );
+        labelEmphasis.set(node.key, nextLabelEmphasis);
+        const labelScale = heroLabelScale(
+          baseLabelScale,
+          node.category === "self",
+          nextLabelEmphasis,
         );
         const projectedRadius =
           depth > 0
@@ -804,6 +1175,11 @@ export default function YouView() {
       window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
       motionQuery.removeEventListener("change", onMotionPreference);
+      finePointerQuery.removeEventListener(
+        "change",
+        onFinePointerPreference,
+      );
+      canvasElement.removeEventListener("pointerenter", onPointerEnter);
       canvasElement.removeEventListener("pointermove", onPointerMove, true);
       canvasElement.removeEventListener("pointerdown", onPointerDown, true);
       canvasElement.removeEventListener("pointerup", onPointerUp, true);
@@ -900,7 +1276,7 @@ export default function YouView() {
               className={styles.inspectorOrb}
               aria-hidden="true"
               style={{
-                background: `radial-gradient(circle at 34% 24%, ${selectedNode.palette[0]}, ${selectedNode.palette[1]} 48%, ${selectedNode.palette[2]} 100%)`,
+                background: categoryOrbGradient(selectedNode.category),
               }}
             />
             <div className={styles.taxonomy}>
@@ -942,7 +1318,7 @@ export default function YouView() {
                         className={styles.connectionOrb}
                         aria-hidden="true"
                         style={{
-                          background: `radial-gradient(circle at 34% 24%, ${node.palette[0]}, ${node.palette[1]} 48%, ${node.palette[2]} 100%)`,
+                          background: categoryOrbGradient(node.category),
                         }}
                       />
                       <span className={styles.connectionCopy}>

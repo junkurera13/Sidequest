@@ -202,6 +202,28 @@ midnight, so this session is recorded under July 21._
   titles, and connected-node names capitalize meaningful words while keeping
   articles, conjunctions, and short prepositions quiet; intentional casing such
   as acronyms and product names is preserved.
+- Replaced per-node colour choices with one restrained material palette for
+  each category. The main 3D orb, selected-node portrait, and connection
+  miniature now always agree; procedural texture still gives individual nodes
+  subtle variation without weakening the category language.
+- Replaced hand-authored orb radii with an evidence-led sizing model. New graph
+  nodes carry salience separately from confidence; the renderer uses salience
+  as the dominant signal, then gently reinforces strong and repeated
+  relationships. Category has no size bias, hypotheses use opacity rather than
+  shrinking, and **You** remains the one fixed centre.
+- Compressed the non-self size ceiling after the first evidence-led pass left
+  major nodes too close to the central pearl. Relative importance is unchanged,
+  then reduced the complete non-self size band by a further ten percent so the
+  surrounding world feels lighter and **You** has an unmistakable scale
+  advantage.
+- Rebuilt the internal size curve after the compressed band still made a
+  defining Moment and supporting Feelings appear too similar. The continuous
+  hierarchy now creates clear visual tiers—defining memory, strong anchors,
+  supporting meaning, and contextual detail—without assigning any category a
+  hidden size advantage.
+- Added migration-safe optional salience storage for graph rows created before
+  this model. Every new memory analysis must supply a calibrated value, while
+  legacy rows receive a neutral visual fallback until they are revisited.
 - Because the app does not have authentication yet, the renderer uses a local,
   redacted presentation of the real development graph. No phone number or
   unauthenticated private-memory query was added. The renderer is ready to
@@ -209,10 +231,10 @@ midnight, so this session is recorded under July 21._
 
 ### Verification
 
-- All 33 automated tests passed, including the canonical category and relation
+- All 40 automated tests passed, including the canonical category and relation
   contract, evidence validation, deterministic outward placement,
   parent-to-child radial growth, sibling fanning around a shared orb, and the
-  node-label capitalization rules.
+  node-label capitalization and evidence-led orb sizing rules.
 - Lint passed with no errors. Four warnings remain in pre-existing generated
   Convex files.
 - Convex code generation and TypeScript validation passed.
@@ -246,6 +268,10 @@ midnight, so this session is recorded under July 21._
   spheres with no horizontal overflow or application-console errors.
 - The mobile detail card stays above the navigation with a 20px gap, and both
   desktop and mobile have no horizontal overflow or application-console errors.
+- The evidence-led size hierarchy was visually inspected at 1440×900 and
+  390×844. **You** remains singular, meaningful nodes gain weight without
+  collisions overwhelming the composition, selection still reveals all eight
+  typed neighbours, and connection travel remains intact.
 - Reduced-motion mode removes graph damping and inspector transitions while
   keeping orbit, selection, and content fully usable.
 - The centred solar composition was visually inspected at 1440×900 and

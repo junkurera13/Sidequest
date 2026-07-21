@@ -4,11 +4,12 @@ import type {
   ExperiencePolarity,
   ExperienceRelation,
 } from "../../lib/experienceOntology";
+import { resolveOrbSizes } from "./orbSizing";
 import { resolveOutwardPositions } from "./radialGrowth";
 
 export type WorldNodeCategory = "self" | ExperienceNodeCategory;
 
-export type WorldNode = {
+type WorldNodeSeed = {
   key: string;
   category: WorldNodeCategory;
   subtype: string;
@@ -17,10 +18,14 @@ export type WorldNode = {
   evidence: string;
   certainty: "fact" | "hypothesis";
   confidence: number;
+  salience: number;
   position?: readonly [number, number, number];
+};
+
+export type WorldNode = Omit<WorldNodeSeed, "position"> & {
+  position: readonly [number, number, number];
   radius: number;
-  major?: boolean;
-  palette: readonly [string, string, string];
+  major: boolean;
 };
 
 export type WorldEdge = {
@@ -39,7 +44,7 @@ export type WorldEdge = {
 // meaning that used to be buried inside sentence-shaped labels. `self` remains
 // presentation-only so the world has a human centre without pretending the
 // memory model produced private identity data.
-const worldNodeSeeds: readonly WorldNode[] = [
+const worldNodeSeeds: readonly WorldNodeSeed[] = [
   {
     key: "self",
     category: "self",
@@ -50,10 +55,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "This world grows from the memories you choose to share.",
     certainty: "fact",
     confidence: 1,
+    salience: 1,
     position: [0, 0.08, 0.35],
-    radius: 0.9,
-    major: true,
-    palette: ["#fffdf8", "#b9d7df", "#625d78"],
   },
   {
     key: "island_ride",
@@ -65,10 +68,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“It became one of the top three experiences of my life.”",
     certainty: "fact",
     confidence: 1,
+    salience: 1,
     position: [2.15, 0.35, 0.05],
-    radius: 0.7,
-    major: true,
-    palette: ["#fff8ed", "#b86f52", "#2b1916"],
   },
   {
     key: "close_friends",
@@ -80,10 +81,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“Sharing the whole thing with people I really care about.”",
     certainty: "fact",
     confidence: 1,
+    salience: 0.9,
     position: [-2.15, 1.05, 0.35],
-    radius: 0.5,
-    major: true,
-    palette: ["#ffe9df", "#c87968", "#633835"],
   },
   {
     key: "cycling",
@@ -95,10 +94,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“The cycling itself felt familiar.”",
     certainty: "fact",
     confidence: 1,
+    salience: 0.86,
     position: [-1.75, -1.55, 0.65],
-    radius: 0.48,
-    major: true,
-    palette: ["#e8f0d5", "#789063", "#314336"],
   },
   {
     key: "island_setting",
@@ -110,9 +107,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“This strange town in Japan we didn’t even think about going to.”",
     certainty: "fact",
     confidence: 1,
+    salience: 0.69,
     position: [3.05, 1.75, -0.7],
-    radius: 0.49,
-    palette: ["#dff8f5", "#4f9a9d", "#163b48"],
   },
   {
     key: "nostalgia",
@@ -124,9 +120,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“Whenever I look at the pictures, I feel so nostalgic.”",
     certainty: "fact",
     confidence: 1,
+    salience: 0.78,
     position: [2.7, -1.25, 0.55],
-    radius: 0.45,
-    palette: ["#f3e9ff", "#9b7ab8", "#493956"],
   },
   {
     key: "discovery",
@@ -138,9 +133,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“Discovering the place as we went, without much of a plan.”",
     certainty: "hypothesis",
     confidence: 0.88,
+    salience: 0.72,
     position: [-2.85, 2.05, -0.45],
-    radius: 0.39,
-    palette: ["#f8f2df", "#a6a083", "#494b43"],
   },
   {
     key: "no_fixed_plan",
@@ -152,9 +146,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "The island was unplanned and unfamiliar.",
     certainty: "fact",
     confidence: 1,
+    salience: 0.56,
     position: [1.4, -2.45, -0.65],
-    radius: 0.34,
-    palette: ["#e8e7e3", "#7d7b76", "#272725"],
   },
   {
     key: "joy_in_movement",
@@ -166,9 +159,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“I loved the movement.”",
     certainty: "hypothesis",
     confidence: 0.85,
+    salience: 0.7,
     position: [3.15, -2, 0.65],
-    radius: 0.4,
-    palette: ["#fff0de", "#d19471", "#6e4241"],
   },
   {
     key: "shared_presence",
@@ -180,9 +172,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“Doing it with close friends felt completely new.”",
     certainty: "hypothesis",
     confidence: 0.9,
+    salience: 0.75,
     position: [-3.2, 0.25, -0.35],
-    radius: 0.4,
-    palette: ["#f8e2ea", "#a86985", "#55384d"],
   },
   {
     key: "familiar_made_new",
@@ -194,9 +185,8 @@ const worldNodeSeeds: readonly WorldNode[] = [
     evidence: "“The cycling felt familiar, but the whole thing felt completely new.”",
     certainty: "hypothesis",
     confidence: 0.9,
+    salience: 0.84,
     position: [-0.25, -2.25, 1.1],
-    radius: 0.45,
-    palette: ["#f9f7ef", "#b5aa91", "#514b43"],
   },
 ];
 
@@ -350,4 +340,9 @@ export const worldEdges: readonly WorldEdge[] = [
   },
 ];
 
-export const worldNodes = resolveOutwardPositions(worldNodeSeeds, worldEdges);
+const sizedWorldNodes = resolveOrbSizes(worldNodeSeeds, worldEdges);
+
+export const worldNodes: readonly WorldNode[] = resolveOutwardPositions(
+  sizedWorldNodes,
+  worldEdges,
+);

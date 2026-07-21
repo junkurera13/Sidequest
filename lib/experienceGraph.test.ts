@@ -13,6 +13,7 @@ const graph = {
       description: "A meaningful shared ride through an unfamiliar island town.",
       certainty: "fact",
       confidence: 1,
+      salience: 1,
       evidence: "They described the ride as one of their best experiences.",
     },
     {
@@ -23,6 +24,7 @@ const graph = {
       description: "An activity the user already loved.",
       certainty: "fact",
       confidence: 1,
+      salience: 0.82,
       evidence: "They explicitly said they love cycling.",
     },
   ],
@@ -61,6 +63,15 @@ describe("validateExperienceGraph", () => {
       validateExperienceGraph({
         ...graph,
         nodes: [{ ...graph.nodes[0], confidence: 2 }, graph.nodes[1]],
+      }),
+    ).toThrow("must be between 0 and 1");
+  });
+
+  it("requires evidenced salience between zero and one", () => {
+    expect(() =>
+      validateExperienceGraph({
+        ...graph,
+        nodes: [{ ...graph.nodes[0], salience: 1.4 }, graph.nodes[1]],
       }),
     ).toThrow("must be between 0 and 1");
   });

@@ -168,6 +168,9 @@ export default defineSchema({
     description: v.string(),
     certainty: experienceCertainty,
     confidence: v.number(),
+    // Optional while older graph rows predate the evidence-led sizing model.
+    // Every new analysis writes salience; readers use a neutral fallback.
+    salience: v.optional(v.number()),
     evidence: v.string(),
     createdAt: v.number(),
   })

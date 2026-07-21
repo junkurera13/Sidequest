@@ -146,6 +146,16 @@ A flexible subtype adds precision without multiplying the top-level system: a pl
 
 Relationships are typed rather than invented as arbitrary prose. They also preserve polarity, familiarity, importance, epistemic confidence, and source evidence. Confidence answers *how sure is Sidequest?* Importance answers *how much did this matter?* Those are never the same thing.
 
+Nodes also retain **salience**: an evidence-led judgment of how central that person, place, activity, feeling, condition, or pattern appears in the person's lived world. Explicit emphasis, enduring emotion, recurrence across memories, and meaningful relationships can raise salience. Category never does. A Place is not larger merely because it is a Place.
+
+The visual language keeps these meanings separate:
+
+- **Colour** communicates category.
+- **Size** communicates evidenced salience, gently reinforced by strong and repeated relationships.
+- **Opacity** communicates epistemic certainty.
+
+The person remains the one fixed centre. Every other orb resolves within a restrained size range rather than receiving a hand-authored radius. Confidence must never make something appear important, and importance must never make a hypothesis appear certain. Because the scale is absolute rather than ranked against the current graph, an unrelated new node should not cause the rest of the world to resize.
+
 The graph should preserve three layers:
 
 ### The original memory

@@ -5,6 +5,7 @@
 | 001 | [Focus and restore the selected orb](001-focus-selected-orb.md) | MEDIUM | IMPLEMENTED — MANUAL FEEL CHECK PENDING |
 | 002 | [Add subtle cursor repulsion to nearby orbs](002-add-cursor-orb-repulsion.md) | LOW | IMPLEMENTED — MANUAL FEEL CHECK PENDING |
 | 003 | [Balance the focused label and cursor vicinity](003-balance-focused-label-and-cursor-vicinity.md) | MEDIUM | IMPLEMENTED — MANUAL FEEL CHECK PENDING |
+| 004 | [Reveal newly learned orbs outward](004-reveal-new-orbs-outward.md) | HIGH | IMPLEMENTED — MANUAL FEEL CHECK PENDING |
 
 ## Recommended order
 
@@ -24,3 +25,11 @@ additional animation loops, semantic graph changes, and touch-only motion.
 
 Plan 003 depends on Plans 001 and 002 and must preserve their single animation
 loop, reduced-motion branch, and saved resting positions.
+
+4. Execute Plan 004 after Plans 001–003. It turns the existing outward
+   placement foundation into a one-time visual birth for unseen node identities
+   while reusing the same scene, render loop, rest positions, and motion gates.
+
+Plan 004 depends on the placement, sizing, focus, cursor, and label behavior in
+Plans 001–003. It intentionally does not add live account data or invent a demo
+memory; that data-source integration remains separate.

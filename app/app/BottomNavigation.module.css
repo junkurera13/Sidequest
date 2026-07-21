@@ -34,55 +34,13 @@
   initial-value: #1a2430;
 }
 
-/* Shared bottom strip — pill + profile share the same baseline & height */
-.chrome {
-  --chrome-bottom: max(20px, env(safe-area-inset-bottom));
-  --chrome-side: 16px;
-  --chrome-size: 52px;
-  --profile-gap: 10px;
-
+.dock {
   position: fixed;
   z-index: 20;
-  left: 0;
-  right: 0;
-  bottom: var(--chrome-bottom);
-  height: var(--chrome-size);
-  padding: 0 var(--chrome-side);
-  pointer-events: none;
-}
-
-.dock {
-  position: absolute;
   left: 50%;
-  bottom: 0;
-  width: min(
-    294px,
-    calc(100% - (var(--chrome-side) * 2) - var(--chrome-size) - var(--profile-gap))
-  );
-  height: var(--chrome-size);
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: min(294px, calc(100vw - 32px));
   transform: translateX(-50%);
-  pointer-events: auto;
-}
-
-.profile {
-  position: absolute;
-  right: var(--chrome-side);
-  bottom: 0;
-  width: var(--chrome-size);
-  height: var(--chrome-size);
-  padding: 0;
-  appearance: none;
-  border: 0;
-  border-radius: 50%;
-  background: #d9d4cc;
-  cursor: pointer;
-  pointer-events: auto;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile:focus-visible {
-  outline: 2px solid #666;
-  outline-offset: 2px;
 }
 
 .tabs {
@@ -102,7 +60,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   width: 100%;
-  height: 100%;
+  height: 52px;
   padding: 5px;
   overflow: hidden;
   isolation: isolate;

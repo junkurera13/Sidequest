@@ -166,6 +166,14 @@ midnight, so this session is recorded under July 21._
   fan of nearby angles for breathing room, and use a small amount of depth so
   sibling branches feel organic rather than arranged on perfect rings. Existing
   hand-composed positions remain intact until a genuinely new orb is born.
+- Added the separate visual birth that the placement foundation did not yet
+  provide. Unseen node identities now reveal once in branch order: each orb
+  resolves a short distance outward, its relationship draws behind it, and its
+  label arrives only after the object is legible. Completed identities are
+  stored locally, incomplete reveals can safely replay, saved manual positions
+  remain untouched, and reduced-motion renders the completed world immediately.
+  This is intentionally only an identity-keyed reveal lifecycle for the current
+  static graph; it does not claim that a live account graph subscription exists.
 - The initial free-floating graph was then reorganized into a personal solar
   system. A presentation-only **you** pearl now sits at the centre, with three
   evidence-backed roots leading to the Fukuoka memory, close friends, and

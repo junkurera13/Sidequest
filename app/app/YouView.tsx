@@ -20,6 +20,23 @@ import {
   saveOrbLayout,
   type OrbPosition,
 } from "./orbLayoutPersistence";
+import {
+  ORB_BIRTH_DELAY_MS,
+  ORB_BIRTH_DURATION_MS,
+  ORB_BIRTH_EDGE_END,
+  ORB_BIRTH_EDGE_START,
+  ORB_BIRTH_INWARD_DISTANCE,
+  ORB_BIRTH_LABEL_END,
+  ORB_BIRTH_LABEL_START,
+  ORB_BIRTH_STAGGER_MS,
+  ORB_BIRTH_START_SCALE,
+  loadSeenNodeKeys,
+  orderUnseenNodeKeys,
+  rangeProgress,
+  saveSeenNodeKeys,
+  strongEaseOut,
+  unitProgress,
+} from "./orbBirth";
 import { categoryOrbGradient, categoryPalette } from "./categoryAppearance";
 import {
   CURSOR_DAMPING,
@@ -46,6 +63,8 @@ type RenderedConnection = {
   curve: THREE.QuadraticBezierCurve3;
   point: THREE.Vector3;
   baseOpacity: number;
+  selectionOpacity: number;
+  totalDrawCount: number;
 };
 
 function worldCategoryLabel(node: (typeof worldNodes)[number]) {
@@ -320,6 +339,12 @@ export default function YouView() {
     world.position.y = 0.24;
     scene.add(world);
 
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const finePointerQuery = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    );
+    let reducedMotion = motionQuery.matches;
+    let hasFinePointer = finePointerQuery.matches;
     let layoutStorage: Storage | null = null;
     try {
       layoutStorage = window.localStorage;
@@ -327,16 +352,55 @@ export default function YouView() {
       // Browsers may disable storage. The world still works with authored
       // positions for that session.
     }
+    const allowedNodeKeys = new Set(worldNodes.map((node) => node.key));
     const savedPositions = loadOrbLayout(
       layoutStorage,
-      new Set(worldNodes.map((node) => node.key)),
+      allowedNodeKeys,
     );
+    const seenNodeKeys = loadSeenNodeKeys(layoutStorage, allowedNodeKeys);
+    seenNodeKeys.add("self");
+    const unseenNodeKeys = orderUnseenNodeKeys(
+      worldNodes,
+      worldEdges,
+      seenNodeKeys,
+    );
+    const unseenNodeKeySet = new Set(unseenNodeKeys);
+    const birthStartDelays = new Map(
+      unseenNodeKeys.map((key, index) => [
+        key,
+        ORB_BIRTH_DELAY_MS + index * ORB_BIRTH_STAGGER_MS,
+      ]),
+    );
+    const rawBirthProgress = new Map<string, number>();
+    const easedBirthProgress = new Map<string, number>();
+    for (const node of worldNodes) {
+      const progress =
+        reducedMotion || node.key === "self" || !unseenNodeKeySet.has(node.key)
+          ? 1
+          : 0;
+      rawBirthProgress.set(node.key, progress);
+      easedBirthProgress.set(node.key, progress);
+    }
+    if (reducedMotion) {
+      for (const node of worldNodes) seenNodeKeys.add(node.key);
+      saveSeenNodeKeys(layoutStorage, seenNodeKeys);
+    }
 
-    const meshes = new Map<string, THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhysicalMaterial>>();
+    const meshes = new Map<
+      string,
+      THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhysicalMaterial>
+    >();
     const textures: THREE.Texture[] = [];
     const baseOpacities = new Map<string, number>();
+    const selectionOpacities = new Map<string, number>();
+    const interactionScales = new Map<string, number>();
     const restPositions = new Map<string, THREE.Vector3>();
     const cursorOffsets = new Map<string, THREE.Vector3>();
+    const birthInwardOffsets = new Map<string, THREE.Vector3>();
+    const haloMaterials = new Map<
+      string,
+      { material: THREE.MeshBasicMaterial; baseOpacity: number }
+    >();
     const labelEmphasis = new Map<string, number>();
 
     for (const node of worldNodes) {
@@ -365,31 +429,73 @@ export default function YouView() {
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(...(savedPositions.get(node.key) ?? node.position));
+      const initialBirthProgress = easedBirthProgress.get(node.key) ?? 1;
+      mesh.scale.setScalar(
+        ORB_BIRTH_START_SCALE +
+          (1 - ORB_BIRTH_START_SCALE) * initialBirthProgress,
+      );
+      mesh.material.opacity = baseOpacity * initialBirthProgress;
+      mesh.material.depthWrite = initialBirthProgress >= 1;
+      mesh.visible = initialBirthProgress > 0;
       mesh.userData.nodeKey = node.key;
       world.add(mesh);
       meshes.set(node.key, mesh);
       baseOpacities.set(node.key, baseOpacity);
+      selectionOpacities.set(node.key, baseOpacity);
+      interactionScales.set(node.key, 1);
       restPositions.set(node.key, mesh.position.clone());
       cursorOffsets.set(node.key, new THREE.Vector3());
       labelEmphasis.set(node.key, 0);
 
       if (node.category === "self" || node.category === "experience") {
+        const haloBaseOpacity = node.category === "self" ? 0.11 : 0.055;
+        const haloMaterial = new THREE.MeshBasicMaterial({
+          color: node.category === "self" ? 0xb8cbd3 : 0xd79a72,
+          transparent: true,
+          opacity: haloBaseOpacity * initialBirthProgress,
+          side: THREE.BackSide,
+          depthWrite: false,
+        });
         const halo = new THREE.Mesh(
           new THREE.SphereGeometry(
             node.radius * (node.category === "self" ? 1.2 : 1.14),
             40,
             28,
           ),
-          new THREE.MeshBasicMaterial({
-            color: node.category === "self" ? 0xb8cbd3 : 0xd79a72,
-            transparent: true,
-            opacity: node.category === "self" ? 0.11 : 0.055,
-            side: THREE.BackSide,
-            depthWrite: false,
-          }),
+          haloMaterial,
         );
         mesh.add(halo);
+        haloMaterials.set(node.key, {
+          material: haloMaterial,
+          baseOpacity: haloBaseOpacity,
+        });
       }
+    }
+
+    const centreRestPosition = restPositions.get("self");
+    for (const node of worldNodes) {
+      const restPosition = restPositions.get(node.key);
+      const inwardOffset = new THREE.Vector3();
+      if (
+        unseenNodeKeySet.has(node.key) &&
+        restPosition &&
+        centreRestPosition
+      ) {
+        inwardOffset
+          .copy(centreRestPosition)
+          .sub(restPosition)
+          .setZ(0);
+        if (inwardOffset.lengthSq() > 0) {
+          inwardOffset.normalize().multiplyScalar(ORB_BIRTH_INWARD_DISTANCE);
+        }
+        meshes
+          .get(node.key)
+          ?.position.addScaledVector(
+            inwardOffset,
+            1 - (easedBirthProgress.get(node.key) ?? 1),
+          );
+      }
+      birthInwardOffsets.set(node.key, inwardOffset);
     }
 
     const edgeLines: RenderedConnection[] = [];
@@ -408,7 +514,32 @@ export default function YouView() {
         edge,
         ...connection,
         baseOpacity: connectionOpacity(edge),
+        selectionOpacity: connectionOpacity(edge),
+        totalDrawCount:
+          connection.line.geometry.getAttribute("position").count,
       });
+      const endpointProgress = Math.min(
+        rawBirthProgress.get(edge.from) ?? 1,
+        rawBirthProgress.get(edge.to) ?? 1,
+      );
+      const edgeProgress = rangeProgress(
+        endpointProgress,
+        ORB_BIRTH_EDGE_START,
+        ORB_BIRTH_EDGE_END,
+      );
+      const totalDrawCount =
+        connection.line.geometry.getAttribute("position").count;
+      connection.line.geometry.setDrawRange(
+        0,
+        edgeProgress <= 0
+          ? 0
+          : Math.min(
+              totalDrawCount,
+              Math.max(2, Math.ceil(totalDrawCount * edgeProgress)),
+            ),
+      );
+      connection.line.material.opacity =
+        connectionOpacity(edge) * edgeProgress;
     }
 
     const pointer = new THREE.Vector2();
@@ -425,6 +556,7 @@ export default function YouView() {
     const panOffset = new THREE.Vector3();
     const pointerCanvasPosition = new THREE.Vector2();
     const clock = new THREE.Clock();
+    const birthEpochMs = window.performance.now();
     const focusWorldPosition = new THREE.Vector3();
     const focusViewDirection = new THREE.Vector3();
     const cameraDestination = new THREE.Vector3();
@@ -443,12 +575,6 @@ export default function YouView() {
     let activePointerId: number | null = null;
     let animationFrame = 0;
     let pointerInsideCanvas = false;
-    let reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    let hasFinePointer = window.matchMedia(
-      "(hover: hover) and (pointer: fine)",
-    ).matches;
 
     function isCameraFlightActive() {
       return hasCameraDestination;
@@ -495,6 +621,19 @@ export default function YouView() {
       offset.set(0, 0, 0);
       mesh.position.copy(restPosition);
       updateConnectedLines(nodeKey);
+    }
+
+    function completeAllOrbBirths() {
+      let identitiesChanged = false;
+      for (const node of worldNodes) {
+        rawBirthProgress.set(node.key, 1);
+        easedBirthProgress.set(node.key, 1);
+        if (!seenNodeKeys.has(node.key)) {
+          seenNodeKeys.add(node.key);
+          identitiesChanged = true;
+        }
+      }
+      if (identitiesChanged) saveSeenNodeKeys(layoutStorage, seenNodeKeys);
     }
 
     function requestCameraFocus(nodeKey: string) {
@@ -579,8 +718,14 @@ export default function YouView() {
 
     function pickNode(event: PointerEvent) {
       updatePointer(event);
-      const hit = raycaster.intersectObjects([...meshes.values()], false)[0];
-      return hit?.object.userData.nodeKey as string | undefined;
+      const hits = raycaster.intersectObjects([...meshes.values()], false);
+      for (const hit of hits) {
+        const nodeKey = hit.object.userData.nodeKey as string | undefined;
+        if ((rawBirthProgress.get(nodeKey ?? "") ?? 1) >= 0.9) {
+          return nodeKey;
+        }
+      }
+      return undefined;
     }
 
     function updateConnectedLines(nodeKey: string) {
@@ -823,14 +968,11 @@ export default function YouView() {
       updatePointerCanvasPosition(event);
     }
 
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const finePointerQuery = window.matchMedia(
-      "(hover: hover) and (pointer: fine)",
-    );
     const onMotionPreference = () => {
       reducedMotion = motionQuery.matches;
       controls.enableDamping = !reducedMotion;
       if (reducedMotion) {
+        completeAllOrbBirths();
         for (const node of worldNodes) resetCursorOffset(node.key);
         completeCameraFlight();
       }
@@ -870,6 +1012,7 @@ export default function YouView() {
     const cursorTargetOffset = new THREE.Vector3();
     const zeroCursorOffset = new THREE.Vector3();
     const previousCursorOffset = new THREE.Vector3();
+    const previousBirthPosition = new THREE.Vector3();
     const nextMeshPosition = new THREE.Vector3();
     const worldQuaternion = new THREE.Quaternion();
     const inverseWorldQuaternion = new THREE.Quaternion();
@@ -901,6 +1044,7 @@ export default function YouView() {
 
       if (eligible) {
         for (const node of worldNodes) {
+          if ((rawBirthProgress.get(node.key) ?? 1) < 1) continue;
           const mesh = meshes.get(node.key);
           if (!mesh) continue;
 
@@ -1006,6 +1150,48 @@ export default function YouView() {
       }
     }
 
+    function applyOrbBirthMotion(elapsedMs: number) {
+      let identitiesChanged = false;
+
+      for (const nodeKey of unseenNodeKeys) {
+        const mesh = meshes.get(nodeKey);
+        const restPosition = restPositions.get(nodeKey);
+        const cursorOffset = cursorOffsets.get(nodeKey);
+        const inwardOffset = birthInwardOffsets.get(nodeKey);
+        if (!mesh || !restPosition || !cursorOffset || !inwardOffset) continue;
+
+        const rawProgress = reducedMotion || seenNodeKeys.has(nodeKey)
+          ? 1
+          : unitProgress(
+              elapsedMs,
+              birthStartDelays.get(nodeKey) ?? ORB_BIRTH_DELAY_MS,
+              ORB_BIRTH_DURATION_MS,
+            );
+        const easedProgress = reducedMotion
+          ? 1
+          : strongEaseOut(rawProgress);
+        rawBirthProgress.set(nodeKey, rawProgress);
+        easedBirthProgress.set(nodeKey, easedProgress);
+
+        previousBirthPosition.copy(mesh.position);
+        nextMeshPosition
+          .copy(restPosition)
+          .add(cursorOffset)
+          .addScaledVector(inwardOffset, 1 - easedProgress);
+        mesh.position.copy(nextMeshPosition);
+        if (previousBirthPosition.distanceTo(mesh.position) > 0.0001) {
+          updateConnectedLines(nodeKey);
+        }
+
+        if (rawProgress >= 1 && !seenNodeKeys.has(nodeKey)) {
+          seenNodeKeys.add(nodeKey);
+          identitiesChanged = true;
+        }
+      }
+
+      if (identitiesChanged) saveSeenNodeKeys(layoutStorage, seenNodeKeys);
+    }
+
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(containerElement);
     resize();
@@ -1037,6 +1223,7 @@ export default function YouView() {
       }
       camera.updateMatrixWorld();
       applyCursorInfluence(deltaSeconds);
+      applyOrbBirthMotion(window.performance.now() - birthEpochMs);
 
       const selected = selectedKeyRef.current;
       connectedKeys.clear();
@@ -1055,24 +1242,46 @@ export default function YouView() {
         const isSelected = selected === node.key;
         const isHovered = hoveredKey === node.key;
         const isDragging = draggingKey === node.key;
-        const targetScale = isDragging
+        const interactionScale = isDragging
           ? 1.14
           : isSelected
             ? 1.12
             : isHovered
               ? 1.07
               : 1;
-        scaleVector.setScalar(targetScale);
-        mesh.scale.lerp(scaleVector, reducedMotion ? 1 : 0.13);
+        const birthProgress = easedBirthProgress.get(node.key) ?? 1;
+        const birthScale =
+          ORB_BIRTH_START_SCALE +
+          (1 - ORB_BIRTH_START_SCALE) * birthProgress;
+        const currentInteractionScale =
+          interactionScales.get(node.key) ?? 1;
+        const nextInteractionScale = THREE.MathUtils.lerp(
+          currentInteractionScale,
+          interactionScale,
+          reducedMotion ? 1 : 0.13,
+        );
+        interactionScales.set(node.key, nextInteractionScale);
+        scaleVector.setScalar(nextInteractionScale * birthScale);
+        mesh.scale.copy(scaleVector);
 
         const baseOpacity = baseOpacities.get(node.key) ?? 1;
-        const targetOpacity =
+        const selectionAwareOpacity =
           !selected || connectedKeys.has(node.key) ? baseOpacity : 0.26;
-        mesh.material.opacity = THREE.MathUtils.lerp(
-          mesh.material.opacity,
-          targetOpacity,
+        const currentSelectionOpacity =
+          selectionOpacities.get(node.key) ?? baseOpacity;
+        const nextSelectionOpacity = THREE.MathUtils.lerp(
+          currentSelectionOpacity,
+          selectionAwareOpacity,
           reducedMotion ? 1 : 0.12,
         );
+        selectionOpacities.set(node.key, nextSelectionOpacity);
+        mesh.material.opacity = nextSelectionOpacity * birthProgress;
+        mesh.material.depthWrite = birthProgress >= 1;
+        mesh.visible = birthProgress > 0;
+        const halo = haloMaterials.get(node.key);
+        if (halo) {
+          halo.material.opacity = halo.baseOpacity * birthProgress;
+        }
 
         const label = labelRefs.current.get(node.key);
         if (!label) continue;
@@ -1143,7 +1352,7 @@ export default function YouView() {
           x > containerElement.clientWidth - horizontalMargin ||
           y < 48 ||
           y > containerElement.clientHeight - (isMobile ? 104 : 72);
-        const labelOpacity =
+        const intendedLabelOpacity =
           isBehind || hideMinorOnMobile || outsideSafeFrame
             ? 0
             : !selected || connectedKeys.has(node.key)
@@ -1151,20 +1360,50 @@ export default function YouView() {
                 ? 0.76
                 : 0.9
               : 0.18;
+        const labelBirthProgress = rangeProgress(
+          birthProgress,
+          ORB_BIRTH_LABEL_START,
+          ORB_BIRTH_LABEL_END,
+        );
+        const labelOpacity = intendedLabelOpacity * labelBirthProgress;
         label.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${labelScale})`;
         label.style.opacity = String(labelOpacity);
-        label.style.pointerEvents = labelOpacity > 0.4 ? "auto" : "none";
+        label.tabIndex = (rawBirthProgress.get(node.key) ?? 1) >= 0.9 ? 0 : -1;
+        label.style.pointerEvents =
+          labelOpacity > 0.4 && (rawBirthProgress.get(node.key) ?? 1) >= 0.9
+            ? "auto"
+            : "none";
       }
 
-      for (const { edge, line, baseOpacity } of edgeLines) {
+      for (const connection of edgeLines) {
+        const { edge, line, baseOpacity, totalDrawCount } = connection;
         const touchesSelection =
           !selected || edge.from === selected || edge.to === selected;
-        const targetOpacity = touchesSelection ? baseOpacity : 0.035;
-        line.material.opacity = THREE.MathUtils.lerp(
-          line.material.opacity,
-          targetOpacity,
+        const selectionAwareOpacity = touchesSelection ? baseOpacity : 0.035;
+        const endpointProgress = Math.min(
+          rawBirthProgress.get(edge.from) ?? 1,
+          rawBirthProgress.get(edge.to) ?? 1,
+        );
+        const edgeProgress = rangeProgress(
+          endpointProgress,
+          ORB_BIRTH_EDGE_START,
+          ORB_BIRTH_EDGE_END,
+        );
+        line.geometry.setDrawRange(
+          0,
+          edgeProgress <= 0
+            ? 0
+            : Math.min(
+                totalDrawCount,
+                Math.max(2, Math.ceil(totalDrawCount * edgeProgress)),
+              ),
+        );
+        connection.selectionOpacity = THREE.MathUtils.lerp(
+          connection.selectionOpacity,
+          selectionAwareOpacity,
           reducedMotion ? 1 : 0.12,
         );
+        line.material.opacity = connection.selectionOpacity * edgeProgress;
       }
 
       renderer.render(scene, camera);

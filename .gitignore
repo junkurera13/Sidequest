@@ -43,3 +43,8 @@ next-env.d.ts
 # local agent / Claude Code state (per-machine, not project)
 .claude/
 .agents/
+
+# eve agent build and local runtime state
+.eve/
+.output/
+.nitro/

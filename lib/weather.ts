@@ -34,7 +34,7 @@ const WMO_DESCRIPTIONS: Record<number, string> = {
   99: "thunderstorms with hail",
 };
 
-function describeWmo(code: number | undefined): string | undefined {
+export function describeWmo(code: number | undefined): string | undefined {
   if (typeof code !== "number") return undefined;
   return WMO_DESCRIPTIONS[code];
 }

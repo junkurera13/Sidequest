@@ -237,12 +237,45 @@ midnight, so this session is recorded under July 21._
   unauthenticated private-memory query was added. The renderer is ready to
   accept account-scoped graph data once sign-in exists.
 
+### The first agent brain
+
+- Added a contained Eve pilot beside the existing app rather than replacing the
+  working onboarding, iMessage, Convex, or You-world code before its taste has
+  been proven.
+- Wrote the first product skill, **Compose An Experience**. It privately turns
+  people, emotional need, real memory anchors, a gentle opening, friction, and
+  hard constraints into one composed experience. It explicitly rejects generic
+  lists, demographic stereotypes, copied memory surfaces, forced three-stop
+  itineraries, excessive activation energy, and invented logistics.
+- Created a portable one-to-five-moment Sidequest contract. Every moment must
+  fit inside the promised time window, routes must connect real moments, and
+  uncertainty stays visible instead of being disguised as confidence.
+- Added narrow tools with clear roles:
+  - Parallel Search discovers unusual and locally specific ingredients.
+  - Google Places verifies the identity, location, status, and hours of venues.
+  - Google Routes verifies distance and travel time.
+  - Open-Meteo checks weather that could change the experience.
+- Disabled Eve's broad shell, file-write, arbitrary-fetch, provider-search, and
+  self-delegation tools for this pilot. The agent cannot deploy, edit the app, or
+  spawn a swarm while composing someone's day.
+- Pinned Eve to version `0.26.1` because the preview is changing quickly and
+  recorded the operating boundary in `docs/agent-brain.md`.
+- Created five initial taste evaluations from the product thesis: the
+  hardworking father, Gangnam without stereotypes, Fukuoka without copying,
+  rain with mobility constraints, and the generic-list trap.
+- Left the pilot deliberately disconnected from real accounts and Convex writes.
+  The next block is to configure the model, Parallel, and Google credentials,
+  taste live outputs together, and revise the skill before integrating it.
+
 ### Verification
 
-- All 40 automated tests passed, including the canonical category and relation
+- All 63 automated tests passed, including the canonical category and relation
   contract, evidence validation, deterministic outward placement,
   parent-to-child radial growth, sibling fanning around a shared orb, and the
-  node-label capitalization and evidence-led orb sizing rules.
+  node-label capitalization, evidence-led orb sizing rules, and the portable
+  Sidequest time and route contract.
+- Eve discovered the skill and tools with zero diagnostics, built a production
+  server successfully, and listed all five tasting cases.
 - Lint passed with no errors. Four warnings remain in pre-existing generated
   Convex files.
 - Convex code generation and TypeScript validation passed.

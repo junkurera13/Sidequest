@@ -17,3 +17,12 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+<!-- eve-agent-start -->
+
+This project contains an experimental [Eve](https://vercel.com/eve) agent under
+`agent/`. Eve is still a fast-moving preview, so before changing agent code,
+read the matching guide in `node_modules/eve/docs/` and keep the `eve` version
+pinned exactly in `package.json`.
+
+<!-- eve-agent-end -->

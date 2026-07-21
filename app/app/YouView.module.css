@@ -111,27 +111,6 @@
   }
 }
 
-.gestureHint {
-  position: absolute;
-  z-index: 4;
-  bottom: 31px;
-  left: 30px;
-  margin: 0;
-  color: rgba(43, 39, 34, 0.42);
-  font-size: 11px;
-  letter-spacing: 0.005em;
-  pointer-events: none;
-  transition: opacity 250ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.gestureHint[data-hidden="true"] {
-  opacity: 0;
-}
-
-.mobileGestureHint {
-  display: none;
-}
-
 .inspector {
   position: absolute;
   z-index: 12;
@@ -403,21 +382,6 @@
 }
 
 @media (max-width: 700px) {
-  .desktopGestureHint {
-    display: none;
-  }
-
-  .mobileGestureHint {
-    display: inline;
-  }
-
-  .gestureHint {
-    right: 20px;
-    bottom: 91px;
-    left: 20px;
-    text-align: center;
-  }
-
   .inspector {
     top: auto;
     right: 16px;
@@ -444,7 +408,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gestureHint,
   .inspector,
   .closeButton,
   .connectionButton {

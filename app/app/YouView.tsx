@@ -225,7 +225,7 @@ export default function YouView() {
   const labelRefs = useRef(new Map<string, HTMLButtonElement>());
   const selectedKeyRef = useRef<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [hasInteracted, setHasInteracted] = useState(false);
+
 
   const selectedNode = useMemo(
     () => (selectedKey ? (WORLD_NODE_BY_KEY.get(selectedKey) ?? null) : null),
@@ -823,7 +823,6 @@ export default function YouView() {
       updatePointerCanvasPosition(event);
       pointerStart.set(event.clientX, event.clientY);
       canvasElement.style.cursor = "grabbing";
-      setHasInteracted(true);
 
       const isWorldGesture =
         event.button !== 0 ||
@@ -916,7 +915,6 @@ export default function YouView() {
     }
 
     function onWheel(event: WheelEvent) {
-      setHasInteracted(true);
       cancelCameraFlight();
 
       // Browsers expose a trackpad pinch as a wheel event with ctrlKey set.
@@ -1474,26 +1472,12 @@ export default function YouView() {
             }}
             onClick={() => {
               setSelectedKey(node.key);
-              setHasInteracted(true);
             }}
           >
             {formatNodeLabel(node.label)}
           </button>
         ))}
       </div>
-
-      <p
-        className={styles.gestureHint}
-        data-hidden={hasInteracted ? "true" : "false"}
-      >
-        <span className={styles.desktopGestureHint}>
-          drag an orb · drag empty space to turn · two-finger scroll to pan ·
-          pinch to zoom
-        </span>
-        <span className={styles.mobileGestureHint}>
-          drag an orb · drag space to pan · two fingers to turn or zoom
-        </span>
-      </p>
 
       <aside
         className={styles.inspector}

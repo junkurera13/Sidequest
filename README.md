@@ -10,8 +10,16 @@ The product is being renovated block by block. [VISION.md](./VISION.md) is the s
 - TypeScript
 - Tailwind CSS
 - Convex
-- Anthropic Claude API
+- Eve agent pilot with Vercel AI Gateway
+- OpenRouter and Anthropic support in the existing Convex runtime
 - nanoid
+
+## New Agent Pilot
+
+The first contained version of the new experience-composition brain lives under
+`agent/`. It does not replace the current product runtime yet. Its architecture,
+tools, credentials, commands, and tasting suite are documented in
+[`docs/agent-brain.md`](./docs/agent-brain.md).
 
 ## Setup
 

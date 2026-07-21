@@ -25,6 +25,52 @@ const experienceNodeKind = v.union(
   v.literal("memory"),
 );
 
+const experienceNodeCategory = v.union(
+  v.literal("experience"),
+  v.literal("people"),
+  v.literal("place"),
+  v.literal("activity"),
+  v.literal("interest"),
+  v.literal("feeling"),
+  v.literal("condition"),
+  v.literal("pattern"),
+);
+
+const experienceRelation = v.union(
+  v.literal("lived"),
+  v.literal("cares_about"),
+  v.literal("shared_with"),
+  v.literal("happened_at"),
+  v.literal("involved"),
+  v.literal("evoked"),
+  v.literal("shaped_by"),
+  v.literal("supported"),
+  v.literal("reflects"),
+  v.literal("part_of"),
+  v.literal("drawn_to"),
+  v.literal("familiar_with"),
+  v.literal("curious_about"),
+  v.literal("avoids"),
+  v.literal("requires"),
+  v.literal("reinforces"),
+  v.literal("contrasts_with"),
+  v.literal("discovered_through"),
+);
+
+const experiencePolarity = v.union(
+  v.literal("positive"),
+  v.literal("negative"),
+  v.literal("mixed"),
+  v.literal("neutral"),
+);
+
+const experienceFamiliarity = v.union(
+  v.literal("familiar"),
+  v.literal("new"),
+  v.literal("mixed"),
+  v.literal("not_applicable"),
+);
+
 export default defineSchema({
   quests: defineTable({
     shortId: v.string(),
@@ -113,6 +159,10 @@ export default defineSchema({
     phone: v.string(),
     memoryId: v.id("experienceMemories"),
     key: v.string(),
+    // Canonical ontology fields are optional during the safe transition from
+    // the original free-form graph rows. All new analyses write both fields.
+    category: v.optional(experienceNodeCategory),
+    subtype: v.optional(v.string()),
     kind: experienceNodeKind,
     label: v.string(),
     description: v.string(),
@@ -128,6 +178,12 @@ export default defineSchema({
     memoryId: v.id("experienceMemories"),
     fromNodeId: v.id("experienceGraphNodes"),
     toNodeId: v.id("experienceGraphNodes"),
+    // `relationship` remains for compatibility with the first stored graph.
+    // New rows also carry the structured fields used by future composition.
+    relation: v.optional(experienceRelation),
+    polarity: v.optional(experiencePolarity),
+    familiarity: v.optional(experienceFamiliarity),
+    strength: v.optional(v.number()),
     relationship: v.string(),
     description: v.string(),
     certainty: experienceCertainty,

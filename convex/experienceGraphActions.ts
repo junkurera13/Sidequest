@@ -4,14 +4,26 @@ import { v } from "convex/values";
 
 import { type ClaudeMessageResponse } from "../lib/claudeQuest";
 import { validateExperienceGraph } from "../lib/experienceGraph";
+import {
+  EXPERIENCE_CATEGORY_META,
+  EXPERIENCE_FAMILIARITIES,
+  EXPERIENCE_NODE_CATEGORIES,
+  EXPERIENCE_POLARITIES,
+  EXPERIENCE_RELATIONS,
+} from "../lib/experienceOntology";
 import { fetchMessages } from "../lib/llmProvider";
 
 const MAX_ATTEMPTS = 3;
 
+const categoryGuide = EXPERIENCE_NODE_CATEGORIES.map((category) => {
+  const definition = EXPERIENCE_CATEGORY_META[category];
+  return `- ${category}: ${definition.purpose} Example subtypes: ${definition.subtypeExamples.join(", ")}.`;
+}).join("\n");
+
 const experienceGraphTool = {
   name: "record_experience_graph",
   description:
-    "Record a bounded, evidence-based graph of the people, experience, emotions, and patterns present in one meaningful memory.",
+    "Record a bounded, categorized, evidence-based graph of one meaningful human experience.",
   input_schema: {
     type: "object",
     additionalProperties: false,
@@ -31,7 +43,8 @@ const experienceGraphTool = {
           additionalProperties: false,
           required: [
             "key",
-            "kind",
+            "category",
+            "subtype",
             "label",
             "description",
             "certainty",
@@ -43,21 +56,20 @@ const experienceGraphTool = {
               type: "string",
               description: "A unique short snake_case key within this graph.",
             },
-            kind: {
+            category: {
               type: "string",
-              enum: [
-                "person",
-                "place",
-                "activity",
-                "setting",
-                "emotion",
-                "motif",
-                "constraint",
-                "context",
-                "memory",
-              ],
+              enum: EXPERIENCE_NODE_CATEGORIES,
             },
-            label: { type: "string" },
+            subtype: {
+              type: "string",
+              description:
+                "A precise snake_case subtype such as coastal_island, movement, nostalgia, planning_style, or meaningful_memory.",
+            },
+            label: {
+              type: "string",
+              description:
+                "A concise human noun or noun phrase. Put conclusions in relationships, not sentence-shaped node labels.",
+            },
             description: { type: "string" },
             certainty: { type: "string", enum: ["fact", "hypothesis"] },
             confidence: { type: "number", minimum: 0, maximum: 1 },
@@ -78,8 +90,11 @@ const experienceGraphTool = {
           required: [
             "fromKey",
             "toKey",
-            "relationship",
+            "relation",
             "description",
+            "polarity",
+            "familiarity",
+            "strength",
             "certainty",
             "confidence",
             "evidence",
@@ -87,12 +102,25 @@ const experienceGraphTool = {
           properties: {
             fromKey: { type: "string" },
             toKey: { type: "string" },
-            relationship: {
+            relation: {
               type: "string",
-              description:
-                "A short snake_case relationship such as shared_with, already_loved, enabled_safety, introduced_discovery, or produced_afterglow.",
+              enum: EXPERIENCE_RELATIONS,
             },
             description: { type: "string" },
+            polarity: { type: "string", enum: EXPERIENCE_POLARITIES },
+            familiarity: {
+              type: "string",
+              enum: EXPERIENCE_FAMILIARITIES,
+              description:
+                "Whether this relationship was familiar, new, mixed, or not applicable in the described experience.",
+            },
+            strength: {
+              type: "number",
+              minimum: 0,
+              maximum: 1,
+              description:
+                "How strongly this relationship appears to have mattered, separate from confidence in the interpretation.",
+            },
             certainty: { type: "string", enum: ["fact", "hypothesis"] },
             confidence: { type: "number", minimum: 0, maximum: 1 },
             evidence: {
@@ -124,14 +152,23 @@ export const analyzeMemory = internalAction({
         max_tokens: 8000,
         system:
           "you are the private memory interpreter for sidequest. a person has trusted you with one real experience they loved. " +
-          "build a small evidence-based graph that preserves the people, places, activities, atmosphere, emotions, constraints, and deeper relationships inside the memory.\n\n" +
+          "build a small evidence-based graph that preserves the moment, people, places, activities, interests, feelings, conditions, and transferable patterns inside the memory.\n\n" +
           "this graph is private creative machinery. never write user-facing copy.\n\n" +
+          "node categories:\n" +
+          categoryGuide +
+          "\n\n" +
           "rules:\n" +
           "- preserve what was actually said. never invent names, demographics, motives, preferences, or facts.\n" +
           "- mark directly supported information as fact. mark interpretations as hypothesis and lower their confidence.\n" +
+          "- nodes are things: use concise nouns or noun phrases. relationships carry the verbs and conclusions. pattern nodes are the only intentional exception.\n" +
+          "- do not create two nodes for one underlying thing merely to encode a property. for example, use one cycling activity node and express familiarity through an edge.\n" +
+          "- use one primary category and one precise snake_case subtype for every node.\n" +
+          "- confidence means how sure the interpretation is. strength means how much the relationship mattered. never confuse them.\n" +
+          "- familiarity records the hidden balance of known and new for future composition; never turn it into user-facing analytical language.\n" +
           "- capture what the presence of other people enabled, not only generic labels like friends or family.\n" +
-          "- capture meaningful relationships among people, activity, setting, emotion, and afterglow.\n" +
+          "- capture meaningful relationships among people, activity, place, condition, feeling, and afterglow.\n" +
           "- distinguish a surface detail from a potentially transferable pattern.\n" +
+          "- familiarity is not proficiency. never claim competence, mastery, or identity unless the person explicitly did.\n" +
           "- nationality and demographics are weak context, never substitutes for learned personal knowledge.\n" +
           "- avoid clinical language, personality typing, and permanent identity labels.\n" +
           "- every node and edge must include a short evidence paraphrase.\n" +

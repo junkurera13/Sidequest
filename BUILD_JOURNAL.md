@@ -111,17 +111,148 @@ midnight, so this session is recorded under July 21._
   phone number is configured, with the existing signup route as the fallback.
 - Updated the site title and description to match the renovated product.
 
+### First doorway into the web app
+
+- Preserved the founder-simplified landing page as the new source of truth and
+  added a restrained secondary **Open app** action beside **Text Sidequest**.
+- An initial app shell was created and immediately rejected. It was removed in
+  full rather than iterated on.
+- Began again from a completely blank white `/app` canvas so the web app could
+  be built one explicitly approved element at a time.
+- Added the first approved element: a bottom-centred **Now · You · Together**
+  navigation pill. It adapts Cast's recessed groove and raised candy control
+  into a quieter Sidequest material: an ink-black base and warm pearl lens.
+- The lens glides between three fixed labels, responds immediately to presses,
+  supports arrow, Home, and End keys, and removes positional motion when the
+  person has reduced motion enabled.
+
+### The first view of You
+
+- Built the first visual answer to the question: **how does Sidequest see a
+  person?** The You tab now opens into a full-screen, interactive 3D world made
+  from the Fukuoka memory rather than a profile, settings page, or preference
+  list.
+- The stored development memory begins with 11 nodes and 8 learned
+  relationships. Its visible projection now normalizes duplicate prose-like
+  ideas into 10 life nodes plus **you**, then expresses their meaning through
+  typed connections. It treats the dense Sonder references as an atmospheric
+  reference, not a target for visual noise.
+- Each idea is represented by an original, procedurally textured orb. People,
+  places, activities, feelings, and emerging patterns have related but distinct
+  materials, so the world feels tactile without needing a visible legend.
+- People can click-drag to turn the world, use two-finger trackpad movement to
+  cross it, pinch to move closer or farther away, and select any visible idea.
+  Selecting one quiets unrelated nodes and opens a human-readable detail card
+  with the actual evidence Sidequest learned from.
+- Every orb can now be picked up and repositioned directly. Attached
+  relationships and labels follow it live, while the empty canvas remains a
+  separate navigation surface. A short movement threshold keeps a click for
+  opening a memory distinct from a drag for rearranging it.
+- Navigation now follows the physical trackpad gesture: two-finger movement pans
+  across the canvas, pinching alone changes zoom, and clicking then dragging
+  empty space turns the 3D system. On touch, one finger pans while two fingers
+  turn or zoom. The small gesture hint changes between desktop and mobile
+  instead of showing irrelevant trackpad instructions on a phone.
+- Relationship lines were lifted above their earlier near-invisible treatment.
+  Roots remain the strongest structure, while factual and inferred secondary
+  connections are now clearly discoverable without turning the world into a
+  dense technical graph.
+- The connector hierarchy was darkened once more after it still felt too
+  delicate in the complete composition. Roots, factual relationships, and
+  inferred relationships all remain distinct, but none rely on near-white
+  contrast to communicate subtlety.
+- Added the deterministic placement foundation for a graph that grows outward.
+  Newly generated orbs continue beyond their outermost connected orb, search a
+  fan of nearby angles for breathing room, and use a small amount of depth so
+  sibling branches feel organic rather than arranged on perfect rings. Existing
+  hand-composed positions remain intact until a genuinely new orb is born.
+- The initial free-floating graph was then reorganized into a personal solar
+  system. A presentation-only **you** pearl now sits at the centre, with three
+  evidence-backed roots leading to the Fukuoka memory, close friends, and
+  cycling. Smaller facts grow from those roots, while the original learned
+  relationships cross-connect the branches.
+- The solar metaphor stays structural rather than literal: no dark space
+  background, orbit rings, stars, or category legend. The result should feel
+  like a life growing outward, not a themed knowledge graph.
+- The detail panel now reveals each selected orb's direct neighbours as
+  miniature material orbs. Choosing one travels through the system in place:
+  the panel content, selected node, highlighted orbs, and visible relationships
+  all update without closing the panel. Only direct connections appear, so the
+  panel remains a wayfinding tool rather than another database view.
+- Orb labels are now positioned from each sphere's projected screen centre and
+  apparent radius. They remain mathematically centred beneath the orb after
+  panning, zooming, dragging, and changing the 3D camera angle.
+- Orb labels now inherit a continuous amount of their orb's visual weight.
+  Larger, more important spheres receive roomier labels while small satellite
+  labels remain compact, with a legibility floor preserved when zoomed out.
+- Built the first shared category ontology for both the agent and the human
+  interface: **Experience, People, Place, Activity, Interest, Feeling,
+  Condition, and Pattern**. Nodes now carry one stable category and a flexible
+  subtype; relationships carry polarity, familiarity, strength, confidence,
+  and evidence instead of relying on arbitrary verbs.
+- Normalized the Fukuoka presentation around things rather than conclusions.
+  **Cycling** is now one Activity orb, while its familiarity and its role in the
+  island ride live in separate typed relationships. The selected-orb panel
+  reveals category and subtype immediately, then shows each direct neighbour's
+  category and human relationship in a compact, navigable constellation grid.
+- The interface corrects the earlier cycling overstatement: it says cycling
+  felt familiar, not that the person was proficient. Internal confidence scores
+  and the known/unknown thesis remain hidden from the user.
+- Added a shared editorial title-case rule for node names. Orb labels, inspector
+  titles, and connected-node names capitalize meaningful words while keeping
+  articles, conjunctions, and short prepositions quiet; intentional casing such
+  as acronyms and product names is preserved.
+- Because the app does not have authentication yet, the renderer uses a local,
+  redacted presentation of the real development graph. No phone number or
+  unauthenticated private-memory query was added. The renderer is ready to
+  accept account-scoped graph data once sign-in exists.
+
 ### Verification
 
-- All 22 automated tests passed.
+- All 33 automated tests passed, including the canonical category and relation
+  contract, evidence validation, deterministic outward placement,
+  parent-to-child radial growth, sibling fanning around a shared orb, and the
+  node-label capitalization rules.
 - Lint passed with no errors. Four warnings remain in pre-existing generated
   Convex files.
 - Convex code generation and TypeScript validation passed.
 - The production build passed.
 - The renovated landing page returned HTTP 200 with no application error or
   Next.js error overlay in headless Chrome.
+- The **Open app** link was verified end-to-end from `/` to `/app`. The app now
+  opens directly into the in-progress **You** world for this design phase.
 - Desktop and 390px mobile compositions were visually inspected. The mobile
   page has no horizontal overflow (`scrollWidth === clientWidth === 390`).
+- The bottom navigation was also verified interactively at desktop and 390px:
+  all three states select correctly, keyboard navigation works, the pearl stays
+  inside the groove, and reduced-motion produces a `0s` transition.
+- The You world was verified in headless Chrome at 1440×900 and 390×844. Drag
+  changes the 3D projection, selection reveals the correct memory detail, and
+  switching away from and back to You cleanly remounts the WebGL scene.
+- Individual-orb dragging was also verified at both viewport sizes: the chosen
+  orb moves independently, nearby orbs remain fixed, connected lines redraw in
+  place, and whole-world orbit remains available immediately after release.
+- The final gesture mapping was verified independently: ordinary two-axis
+  trackpad movement translates the system without changing zoom, pinching
+  changes zoom, background click-drag changes the 3D projection, and direct orb
+  dragging still leaves surrounding nodes fixed.
+- Connected-orb navigation was verified on desktop and mobile. The central
+  node exposes its three roots; travelling to **The island ride** reveals eight
+  typed neighbours with their human relationships and categories. The selected
+  graph state follows the panel, and the enlarged mobile sheet fits the complete
+  connection grid above the navigation without internal scrolling at 390×844.
+- Label alignment was visually inspected before and after a substantial 3D
+  rotation; all visible labels remained centred beneath their corresponding
+  spheres with no horizontal overflow or application-console errors.
+- The mobile detail card stays above the navigation with a 20px gap, and both
+  desktop and mobile have no horizontal overflow or application-console errors.
+- Reduced-motion mode removes graph damping and inspector transitions while
+  keeping orbit, selection, and content fully usable.
+- The centred solar composition was visually inspected at 1440×900 and
+  390×844. Its presentation root selects and drags independently, the three
+  root lines follow live, empty-space orbit still works after release, the
+  mobile sheet clears the navigation, and neither viewport reports application
+  errors or horizontal overflow.
 - The hero, primary action, internal navigation, and SMS destination render at
   both sizes. The only browser-console noise was the development hot-reload
   WebSocket under headless Chrome, not an application error.
@@ -130,26 +261,46 @@ midnight, so this session is recorded under July 21._
 
 ### Where we left off
 
-- The new onboarding and graph engine exist, but the development database does
-  not contain a memory yet. The Fukuoka story from the Codex conversation was
-  not silently copied into the product.
-- There is no visual graph interface yet. Raw graph data can currently be seen
-  through the Convex dashboard in these tables:
+- The renovated onboarding was run end-to-end with the Fukuoka cycling memory
+  after explicit permission. The development graph contains 11 nodes and 8
+  connections, and the test user reached `first_quest_ready` with a clearly
+  marked Saturday test window.
+- The test validated the central graph thesis: Sidequest identified close
+  friends, cycling, the unfamiliar seaside setting, unplanned discovery,
+  movement, significance, and lasting nostalgia. It also exposed evidence
+  discipline problems: the reflection invented a group of three, love of
+  cycling was overstated as proficiency, and some analytical language felt too
+  clinical or grandiose. These should be corrected before the graph is trusted
+  to compose an experience by itself.
+- The first visual graph now exists in the **You** tab. The app temporarily
+  opens there by default so its visual language can be judged; the finished
+  product can return to opening on **Now**.
+- Its current direction is a personal solar system: **you → major roots →
+  memories and details → recurring cross-connections**. The development graph
+  still contains 11 learned nodes and 8 learned connections; the twelfth visual
+  node and its three root lines exist only to give the interface a truthful
+  human centre.
+- Raw source graph data can still be seen through the Convex dashboard in these
+  tables:
   - `experienceMemories`
   - `experienceGraphNodes`
   - `experienceGraphEdges`
-- To create the first real graph, run `npm run terminal:agent`, begin a new
-  conversation, and answer the memory invitation. Then run
-  `npx convex dashboard` to inspect the stored data.
-- The strongest candidate for the first visual surface is a private
-  **Your Constellation** view: a living, calm representation of meaningful
-  memories and emerging understanding, not a corporate flowchart.
+- The owned app navigation is now locked as **Now · You · Together**. The first
+  version needs only **Now** and **You**; **Together** appears once safe shared
+  experiences and consensual connections actually exist.
+- The immediate visual block is **You**: a living, calm representation of
+  meaningful memories and emerging understanding, not a corporate flowchart or
+  raw database diagram. Its first 3D version is now ready for a founder taste
+  pass before richer memories, clustering, or live account data are introduced.
+  The **You** view still comes before the first Sidequest composer so the
+  product can establish how the agent sees a person.
 - The landing page now expresses the new identity, but older internal surfaces
   such as signup, quest files, and admin tools still contain parts of the legacy
   pixel system. They should be renovated only as each new product block reaches
   them; they were not silently redesigned as part of the landing-page request.
-- The next functional block is the **first Sidequest composer**. It needs enough
-  immediate context—current location, who is joining, available window, and hard
+- After the **You** prototype feels truthful and beautiful, the next functional
+  block is the **first Sidequest composer**. It needs enough immediate
+  context—current location, who is joining, available window, and hard
   constraints—to turn the graph into one thoughtful real-world experience.
 - The renovation changes are currently local and uncommitted. Nothing from this
   session was intentionally deployed to production.

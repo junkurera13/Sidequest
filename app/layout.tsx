@@ -31,9 +31,9 @@ const vt323 = VT323({
 });
 
 export const metadata: Metadata = {
-  title: "Sidequest — Make a day worth remembering",
+  title: "Sidequest",
   description:
-    "Tell Sidequest about a day you loved. When the time is right, your next one will be waiting.",
+    "Experiences that feel strangely meant for you.",
 };
 
 export default function RootLayout({

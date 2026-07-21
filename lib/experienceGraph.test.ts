@@ -6,18 +6,20 @@ const graph = {
   summary: "A shared cycling memory rooted in freedom and discovery.",
   nodes: [
     {
-      key: "user",
-      kind: "person",
-      label: "the user",
-      description: "The person remembering the experience.",
+      key: "island_ride",
+      category: "experience",
+      subtype: "meaningful_memory",
+      label: "The island ride",
+      description: "A meaningful shared ride through an unfamiliar island town.",
       certainty: "fact",
       confidence: 1,
-      evidence: "They described the memory directly.",
+      evidence: "They described the ride as one of their best experiences.",
     },
     {
       key: "cycling",
-      kind: "activity",
-      label: "cycling",
+      category: "activity",
+      subtype: "movement",
+      label: "Cycling",
       description: "An activity the user already loved.",
       certainty: "fact",
       confidence: 1,
@@ -26,10 +28,13 @@ const graph = {
   ],
   edges: [
     {
-      fromKey: "user",
+      fromKey: "island_ride",
       toKey: "cycling",
-      relationship: "already_loved",
-      description: "Cycling was meaningful before this particular trip.",
+      relation: "involved",
+      description: "Cycling was the familiar activity inside the experience.",
+      polarity: "positive",
+      familiarity: "familiar",
+      strength: 1,
       certainty: "fact",
       confidence: 1,
       evidence: "They explicitly said they love cycling.",
@@ -38,7 +43,7 @@ const graph = {
 };
 
 describe("validateExperienceGraph", () => {
-  it("accepts a bounded graph with explicit evidence", () => {
+  it("accepts a categorized graph with typed relationships", () => {
     expect(validateExperienceGraph(graph)).toEqual(graph);
   });
 
@@ -64,8 +69,26 @@ describe("validateExperienceGraph", () => {
     expect(() =>
       validateExperienceGraph({
         ...graph,
-        nodes: [graph.nodes[0], { ...graph.nodes[1], key: "user" }],
+        nodes: [graph.nodes[0], { ...graph.nodes[1], key: "island_ride" }],
       }),
     ).toThrow("must be unique");
+  });
+
+  it("rejects arbitrary relationship language", () => {
+    expect(() =>
+      validateExperienceGraph({
+        ...graph,
+        edges: [{ ...graph.edges[0], relation: "made_it_magical" }],
+      }),
+    ).toThrow("unsupported value");
+  });
+
+  it("requires machine-readable subtypes", () => {
+    expect(() =>
+      validateExperienceGraph({
+        ...graph,
+        nodes: [{ ...graph.nodes[0], subtype: "Meaningful memory" }, graph.nodes[1]],
+      }),
+    ).toThrow("must be snake_case");
   });
 });

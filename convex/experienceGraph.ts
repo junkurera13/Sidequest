@@ -2,27 +2,63 @@ import { internalMutation, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import type { ExperienceNodeCategory } from "../lib/experienceOntology";
 
 const certaintyValidator = v.union(
   v.literal("fact"),
   v.literal("hypothesis"),
 );
 
-const nodeKindValidator = v.union(
-  v.literal("person"),
+const nodeCategoryValidator = v.union(
+  v.literal("experience"),
+  v.literal("people"),
   v.literal("place"),
   v.literal("activity"),
-  v.literal("setting"),
-  v.literal("emotion"),
-  v.literal("motif"),
-  v.literal("constraint"),
-  v.literal("context"),
-  v.literal("memory"),
+  v.literal("interest"),
+  v.literal("feeling"),
+  v.literal("condition"),
+  v.literal("pattern"),
+);
+
+const relationValidator = v.union(
+  v.literal("lived"),
+  v.literal("cares_about"),
+  v.literal("shared_with"),
+  v.literal("happened_at"),
+  v.literal("involved"),
+  v.literal("evoked"),
+  v.literal("shaped_by"),
+  v.literal("supported"),
+  v.literal("reflects"),
+  v.literal("part_of"),
+  v.literal("drawn_to"),
+  v.literal("familiar_with"),
+  v.literal("curious_about"),
+  v.literal("avoids"),
+  v.literal("requires"),
+  v.literal("reinforces"),
+  v.literal("contrasts_with"),
+  v.literal("discovered_through"),
+);
+
+const polarityValidator = v.union(
+  v.literal("positive"),
+  v.literal("negative"),
+  v.literal("mixed"),
+  v.literal("neutral"),
+);
+
+const familiarityValidator = v.union(
+  v.literal("familiar"),
+  v.literal("new"),
+  v.literal("mixed"),
+  v.literal("not_applicable"),
 );
 
 const nodeDraftValidator = v.object({
   key: v.string(),
-  kind: nodeKindValidator,
+  category: nodeCategoryValidator,
+  subtype: v.string(),
   label: v.string(),
   description: v.string(),
   certainty: certaintyValidator,
@@ -33,8 +69,11 @@ const nodeDraftValidator = v.object({
 const edgeDraftValidator = v.object({
   fromKey: v.string(),
   toKey: v.string(),
-  relationship: v.string(),
+  relation: relationValidator,
   description: v.string(),
+  polarity: polarityValidator,
+  familiarity: familiarityValidator,
+  strength: v.number(),
   certainty: certaintyValidator,
   confidence: v.number(),
   evidence: v.string(),
@@ -43,6 +82,27 @@ const edgeDraftValidator = v.object({
 function assertConfidence(value: number) {
   if (!Number.isFinite(value) || value < 0 || value > 1) {
     throw new Error("Experience graph confidence must be between 0 and 1.");
+  }
+}
+
+function legacyKindForCategory(category: ExperienceNodeCategory) {
+  switch (category) {
+    case "experience":
+      return "memory" as const;
+    case "people":
+      return "person" as const;
+    case "place":
+      return "place" as const;
+    case "activity":
+      return "activity" as const;
+    case "interest":
+      return "motif" as const;
+    case "feeling":
+      return "emotion" as const;
+    case "condition":
+      return "context" as const;
+    case "pattern":
+      return "motif" as const;
   }
 }
 
@@ -101,6 +161,7 @@ export const saveAnalysis = internalMutation({
       const nodeId = await ctx.db.insert("experienceGraphNodes", {
         phone: memory.phone,
         memoryId: args.memoryId,
+        kind: legacyKindForCategory(node.category),
         ...node,
         createdAt: now,
       });
@@ -109,6 +170,7 @@ export const saveAnalysis = internalMutation({
 
     for (const edge of args.edges) {
       assertConfidence(edge.confidence);
+      assertConfidence(edge.strength);
       const fromNodeId = nodeIds.get(edge.fromKey);
       const toNodeId = nodeIds.get(edge.toKey);
       if (!fromNodeId || !toNodeId) {
@@ -119,8 +181,12 @@ export const saveAnalysis = internalMutation({
         memoryId: args.memoryId,
         fromNodeId,
         toNodeId,
-        relationship: edge.relationship,
+        relation: edge.relation,
+        relationship: edge.relation,
         description: edge.description,
+        polarity: edge.polarity,
+        familiarity: edge.familiarity,
+        strength: edge.strength,
         certainty: edge.certainty,
         confidence: edge.confidence,
         evidence: edge.evidence,

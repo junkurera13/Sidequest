@@ -129,6 +129,23 @@ Internally, this can be called the **personal experience graph**. A future user-
 
 This is not a conventional profile made of permanent labels such as `introvert`, `foodie`, or `likes cycling`. It is a living web of people, places, activities, emotions, memories, contexts, and relationships between them.
 
+The graph uses a stable human-and-machine language. A node is normally a thing; an edge carries the verb, meaning, and conclusion between things. **Cycling** is an activity node. The fact that it feels familiar belongs on the relationship between the person and cycling, not inside a second sentence-shaped node. Transferable pattern nodes are the deliberate exception because the pattern itself is what Sidequest has begun to notice.
+
+Every node has one of eight primary categories:
+
+- **Experience:** a real moment, memory, trip, ritual, or Sidequest.
+- **People:** a person, group, or relationship.
+- **Place:** a specific location or useful kind of location.
+- **Activity:** something someone can actively do.
+- **Interest:** a subject, taste, cuisine, medium, or domain.
+- **Feeling:** an emotional or embodied state.
+- **Condition:** a circumstance, preference, or hard boundary that shapes fit.
+- **Pattern:** a transferable value or relationship supported across evidence.
+
+A flexible subtype adds precision without multiplying the top-level system: a place can be a café or coastal island; an activity can be movement or craft; a condition can describe planning style, crowd level, time, or a hard safety boundary.
+
+Relationships are typed rather than invented as arbitrary prose. They also preserve polarity, familiarity, importance, epistemic confidence, and source evidence. Confidence answers *how sure is Sidequest?* Importance answers *how much did this matter?* Those are never the same thing.
+
 The graph should preserve three layers:
 
 ### The original memory
@@ -286,6 +303,16 @@ The experience is not the text conversation. The conversation opens the door.
 
 The underlying intelligence and memory should remain independent of iMessage so that future surfaces can include a native app, web, WhatsApp, or other channels without fragmenting the person's history.
 
+## The owned app: Now, You, Together
+
+The high-level navigation is deliberately limited to three human words:
+
+- **Now** is the experience Sidequest is currently making, the one waiting to begin, or the experience already in progress. It should present one meaningful thing rather than a feed of recommendations.
+- **You** is Sidequest's evolving portrait of the person: meaningful memories, people, places, activities, emotional connections, previous Sidequests, and the evidence behind what the agent has begun to understand. `You` is the user-facing name for this surface; terms such as graph, profile, atlas, and constellation remain internal metaphors rather than navigation labels.
+- **Together** is the future space between people: shared memories, friends and family, group Sidequests, and consensual bridges between private personal worlds. It should only appear when the product has something real and safe behind it.
+
+The first owned version needs only **Now** and **You**. **Together** arrives later. Messages remain in iMessage, completed memories live within **You**, calendar access works quietly in the background, and settings remain secondary. Sidequest should not add an Explore tab or recommendation feed.
+
 ## The reveal and active experience
 
 The mobile reveal should not be a generic stack of itinerary cards. It should feel authored for this person and this moment.
@@ -331,6 +358,8 @@ The core learning loop is:
 > memory → understanding → invitation → experience → reflection → deeper understanding
 
 Over time, the unknown becomes part of the person's world. New interests, relationships, settings, and possibilities create further branches. The graph grows like roots or a constellation, but the person sees their life rather than the system's analysis.
+
+That growth should also be spatial. A new idea appears beyond the orb that led to it, continuing away from the person at the centre. Several children can fan around one parent and multiply connected ideas can settle between related branches. The result should expand in a loose circle like a living solar system, never collapse into perfect rings or a mechanically tidy diagram.
 
 ## Proactivity and free time
 

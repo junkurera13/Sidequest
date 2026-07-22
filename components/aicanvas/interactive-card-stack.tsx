@@ -264,7 +264,12 @@ export default function InteractiveCardStack() {
           role="group"
           aria-label="Interactive card stack"
           className="relative flex w-full select-none items-center justify-center overflow-visible"
-          style={{ perspective: "1400px", height: "clamp(380px, 46vw, 470px)" }}
+          style={{
+            perspective: "1400px",
+            height: isMobile
+              ? "clamp(290px, 78vw, 320px)"
+              : "clamp(380px, 46vw, 470px)",
+          }}
         >
           {CARDS.map((card) => {
             const slotIndex = order.indexOf(card.id);
@@ -282,10 +287,10 @@ export default function InteractiveCardStack() {
                 : SPRING;
             const widthClass = isLandscape
               ? isMobile
-                ? "w-[clamp(225px,66vw,285px)]"
+                ? "w-[clamp(205px,60vw,255px)]"
                 : "w-[clamp(255px,32vw,360px)]"
               : isMobile
-                ? "w-[clamp(150px,48vw,205px)]"
+                ? "w-[clamp(140px,42vw,180px)]"
                 : "w-[clamp(190px,23vw,255px)]";
             const breathY = reduceMotion
               ? 0

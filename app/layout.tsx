@@ -1,6 +1,10 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { DM_Sans, Newsreader } from "next/font/google";
+import {
+  DM_Sans,
+  Instrument_Sans,
+  Newsreader,
+} from "next/font/google";
 import ConvexClientProvider from "./ConvexClientProvider";
 import "./globals.css";
 
@@ -13,6 +17,11 @@ const sidequestSerif = Newsreader({
   variable: "--font-sidequest-serif",
   subsets: ["latin"],
   style: ["normal", "italic"],
+});
+
+const sidequestInstrument = Instrument_Sans({
+  variable: "--font-sidequest-instrument",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -29,9 +38,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sidequestSans.variable} ${sidequestSerif.variable}`}
+      className={`${sidequestSans.variable} ${sidequestSerif.variable} ${sidequestInstrument.variable} h-full antialiased`}
     >
-      <body>
+      <body className="flex min-h-full flex-col bg-[#f3efe7] font-[family-name:var(--font-sidequest-sans)] text-[#1c1c19]">
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ClerkProvider>

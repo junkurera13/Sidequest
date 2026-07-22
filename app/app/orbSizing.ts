@@ -18,6 +18,7 @@ export type SizedOrbNode<T extends OrbSizingNode> = T & {
 export const SELF_ORB_RADIUS = 0.9;
 export const MIN_ORB_RADIUS = 0.22;
 export const MAX_ORB_RADIUS = 0.54;
+export const MOMENT_ORB_SCALE = 1.08;
 export const MAJOR_ORB_IMPORTANCE = 0.8;
 
 const DEFAULT_SALIENCE = 0.5;
@@ -73,9 +74,11 @@ export function resolveOrbSizes<T extends OrbSizingNode>(
       salience +
       (1 - salience) * relationshipEvidence * RELATIONSHIP_REINFORCEMENT;
     const compressedImportance = evidencedImportance ** IMPORTANCE_CURVE;
-    const radius = roundRadius(
+    const evidenceRadius =
       MIN_ORB_RADIUS +
-        (MAX_ORB_RADIUS - MIN_ORB_RADIUS) * compressedImportance,
+      (MAX_ORB_RADIUS - MIN_ORB_RADIUS) * compressedImportance;
+    const radius = roundRadius(
+      evidenceRadius * (node.category === "experience" ? MOMENT_ORB_SCALE : 1),
     );
 
     return {

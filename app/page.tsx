@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import heroImage from "@/app/assets/sidequest-coast.jpg";
-import { SidequestWordmark } from "@/components/SidequestWordmark";
+import { SidequestMark } from "@/components/SidequestMark";
 
 import styles from "./page.module.css";
 
@@ -21,7 +21,7 @@ export default function Home() {
       <div className={styles.wash} aria-hidden="true" />
 
       <header className={styles.header}>
-        <SidequestWordmark className={styles.wordmark} />
+        <SidequestMark className={styles.mark} label="Sidequest" />
       </header>
 
       <div className={styles.content}>

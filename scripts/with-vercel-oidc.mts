@@ -25,7 +25,6 @@ function resolveCommand(command: string): string {
 
 type PulledEnvironment = {
   oidcToken?: string;
-  parallelApiKey?: string;
 };
 
 function pullVercelEnvironment(): PulledEnvironment {
@@ -54,10 +53,7 @@ function pullVercelEnvironment(): PulledEnvironment {
       throw new Error("Vercel returned no OIDC token for the linked Sidequest project.");
     }
 
-    return {
-      oidcToken,
-      parallelApiKey: parseEnvValue(contents, "PARALLEL_API_KEY"),
-    };
+    return { oidcToken };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -69,15 +65,12 @@ if (!requestedCommand) {
 }
 
 const needsPulledEnvironment =
-  (!process.env.VERCEL_OIDC_TOKEN && !process.env.AI_GATEWAY_API_KEY) ||
-  !process.env.PARALLEL_API_KEY;
+  !process.env.VERCEL_OIDC_TOKEN && !process.env.AI_GATEWAY_API_KEY;
 const pulledEnvironment = needsPulledEnvironment ? pullVercelEnvironment() : {};
 const oidcToken = process.env.VERCEL_OIDC_TOKEN ?? pulledEnvironment.oidcToken;
-const parallelApiKey = process.env.PARALLEL_API_KEY ?? pulledEnvironment.parallelApiKey;
 
 const childEnvironment = { ...process.env };
 if (oidcToken) childEnvironment.VERCEL_OIDC_TOKEN = oidcToken;
-if (parallelApiKey) childEnvironment.PARALLEL_API_KEY = parallelApiKey;
 
 const child = spawn(resolveCommand(requestedCommand), args, {
   cwd: process.cwd(),

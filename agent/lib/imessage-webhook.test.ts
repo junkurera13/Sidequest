@@ -3,9 +3,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
-  imessageContinuationToken,
   parseSpectrumWebhook,
-  textFromSpectrumWebhook,
   verifySpectrumWebhookSignature,
 } from "./imessage-webhook";
 
@@ -71,11 +69,12 @@ describe("Spectrum iMessage webhook", () => {
     ).toMatchObject({ ok: false, status: 400 });
   });
 
-  it("normalizes the text and creates a stable per-line conversation token", () => {
+  it("parses a valid direct iMessage delivery", () => {
     const webhook = parseSpectrumWebhook(body);
-    expect(textFromSpectrumWebhook(webhook)).toBe("saturday afternoon");
-    expect(imessageContinuationToken(webhook)).toBe(
-      "shared|any;-;+821012345678",
-    );
+    expect(webhook.space.type).toBe("dm");
+    expect(webhook.message.content).toMatchObject({
+      type: "text",
+      text: "  saturday afternoon  ",
+    });
   });
 });

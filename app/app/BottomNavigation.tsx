@@ -1,6 +1,8 @@
 "use client";
 
+import { UserButton } from "@clerk/nextjs";
 import { useRef, type KeyboardEvent } from "react";
+import { SidequestMark } from "@/components/SidequestMark";
 import styles from "./BottomNavigation.module.css";
 
 export const SIDEQUEST_TABS = ["Now", "You", "Together"] as const;
@@ -78,23 +80,18 @@ export default function BottomNavigation({
         </div>
       </nav>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className={styles.logo}
-        src="/sidequest-mark.svg"
-        alt=""
-        width={108}
-        height={108}
-        aria-hidden="true"
-      />
+      <SidequestMark className={styles.logo} />
 
-      <button
-        type="button"
-        className={styles.profile}
-        aria-label="Profile"
-      >
-        U
-      </button>
+      <div className={styles.profile}>
+        <UserButton
+          appearance={{
+            elements: {
+              userButtonTrigger: styles.profileTrigger,
+              avatarBox: styles.profileAvatar,
+            },
+          }}
+        />
+      </div>
     </div>
   );
 }

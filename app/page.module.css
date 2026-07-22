@@ -44,21 +44,8 @@
   padding: 1.5rem clamp(1.25rem, 4vw, 3rem);
 }
 
-.wordmark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: inherit;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
-.wordmark svg {
-  width: 1.45rem;
-  height: 1.45rem;
+.mark {
+  filter: invert(1);
 }
 
 .content {

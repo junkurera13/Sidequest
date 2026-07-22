@@ -88,15 +88,3 @@ export function verifySpectrumWebhookSignature(args: {
 export function parseSpectrumWebhook(rawBody: string): SpectrumWebhook {
   return webhookSchema.parse(JSON.parse(rawBody));
 }
-
-export function imessageContinuationToken(webhook: SpectrumWebhook) {
-  return `${webhook.space.phone}|${webhook.space.id}`;
-}
-
-export function textFromSpectrumWebhook(webhook: SpectrumWebhook) {
-  if (webhook.message.content.type !== "text") return null;
-  const text = webhook.message.content.text;
-  return typeof text === "string" && text.trim().length > 0
-    ? text.trim()
-    : null;
-}

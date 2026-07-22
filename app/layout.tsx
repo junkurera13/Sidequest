@@ -1,5 +1,7 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { DM_Sans, Newsreader } from "next/font/google";
+import ConvexClientProvider from "./ConvexClientProvider";
 import "./globals.css";
 
 const sidequestSans = DM_Sans({
@@ -29,7 +31,11 @@ export default function RootLayout({
       lang="en"
       className={`${sidequestSans.variable} ${sidequestSerif.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <ClerkProvider>
+          <ConvexClientProvider>{children}</ConvexClientProvider>
+        </ClerkProvider>
+      </body>
     </html>
   );
 }

@@ -56,6 +56,10 @@ const INITIAL_CAMERA_DESKTOP = new THREE.Vector3(0, 0.12, 10.25);
 const INITIAL_CAMERA_MOBILE = new THREE.Vector3(0, 0.1, 19);
 const CONNECTION_SEGMENTS = 28;
 const WORLD_NODE_BY_KEY = new Map(worldNodes.map((node) => [node.key, node]));
+const LEGEND_NODES = worldNodes.filter(
+  (node, index, nodes) =>
+    nodes.findIndex((candidate) => candidate.category === node.category) === index,
+);
 
 type RenderedConnection = {
   edge: (typeof worldEdges)[number];
@@ -1461,7 +1465,26 @@ export default function YouView() {
         aria-label="An interactive three-dimensional map of your memories"
       />
 
-      <div className={styles.labels} aria-label="Memory graph nodes">
+      <aside className={styles.legend} aria-label="Orb legend">
+        <div className={styles.legendHeading}>
+          <h2>Legend</h2>
+          <span>{worldNodes.length} orbs</span>
+        </div>
+        <ul className={styles.legendList}>
+          {LEGEND_NODES.map((node) => (
+            <li key={node.category}>
+              <span
+                className={styles.legendOrb}
+                aria-hidden="true"
+                style={{ background: categoryOrbGradient(node.category) }}
+              />
+              <span>{worldCategoryLabel(node)}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <div className={styles.labels} aria-label="Memory orbs">
         {worldNodes.map((node) => (
           <button
             className={styles.nodeLabel}

@@ -8,8 +8,13 @@
  * @module
  */
 
+import type * as accounts from "../accounts.js";
+import type * as connections from "../connections.js";
 import type * as crons from "../crons.js";
+import type * as lib_auth from "../lib/auth.js";
 import type * as messaging from "../messaging.js";
+import type * as people from "../people.js";
+import type * as sharedExperiences from "../sharedExperiences.js";
 
 import type {
   ApiFromModules,
@@ -18,8 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  accounts: typeof accounts;
+  connections: typeof connections;
   crons: typeof crons;
+  "lib/auth": typeof lib_auth;
   messaging: typeof messaging;
+  people: typeof people;
+  sharedExperiences: typeof sharedExperiences;
 }>;
 
 /**

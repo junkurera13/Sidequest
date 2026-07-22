@@ -8,6 +8,88 @@ entry first. Git remains the technical history; this file is the product story.
 
 ---
 
+## July 22, 2026 — People become real only by consent
+
+### What changed
+
+- Added Clerk authentication to the web app and connected it to Convex with a
+  dedicated `convex` JWT audience. The public landing page and invitation links
+  stay public; the owned `/app` surface now checks identity beside the route and
+  every Convex operation authorizes from the verified token.
+- Established the difference between a **person reference** and a **person
+  identity**:
+  - a name such as Dad, Minho, or Sara can live privately in one person’s graph;
+  - it is never matched to an account from a name, phone number, or guess;
+  - only accepting a high-entropy, single-person invitation binds the reference
+    to the other person’s authenticated account.
+- Built connection invitations with expiry, revocation, acceptance, decline,
+  self-invite protection, and idempotent acceptance.
+- Made acceptance create the relationship on both sides. Together reads only
+  these accepted connection records, while unaccepted people remain private and
+  appear only inside the invitation composer.
+- Added the minimum shared-experience memory foundation behind the same
+  connection membership check. It stores no itinerary and exposes no path back
+  to the retired generation system.
+- Replaced the placeholder profile dot with the authenticated person’s Clerk
+  control and added quiet Sidequest sign-in, sign-up, connection-composer, and
+  invitation-acceptance surfaces.
+- Added Convex authorization tests covering private people, mutual connection
+  creation, self-invite rejection, and shared-memory isolation. The full suite
+  now passes 49 tests.
+
+### Where we left off
+
+The identity and consent model is live on the Convex development deployment and
+the local web product. The 3D You world is still a redacted authored projection;
+its next data step is to read these account-owned person references and later
+the rest of the live memory graph. The Clerk application still needs its human-
+run production-instance promotion before these authenticated surfaces can be
+deployed safely to `sdqst.fun`.
+
+The human connection invitation is complete as infrastructure, but the magical
+Sidequest experience invitation remains deliberately nonexistent. The iMessage
+doorway stays receive-only until that separate product object is designed.
+
+---
+
+## July 22, 2026 — The invitation doorway is deliberately closed
+
+### What changed
+
+- Stopped the main-app phone test before any real iMessage entered the agent.
+- Quarantined the production iMessage route at the signed Photon boundary. It
+  verifies supported direct-message webhooks and returns successfully, but it
+  cannot start an Eve session, store the content, or send a response.
+- Deleted the premature experience composer, `submit_sidequest` contract,
+  research and logistics tools, generation skill, weather helper, and the full
+  generation evaluation suite.
+- Removed the unused Parallel and Google configuration surface from the local
+  agent setup. The AI Gateway check remains only as an infrastructure check.
+- Replaced the experience-director prompt with an explicit no-generation
+  product boundary and added regression coverage for the missing generator and
+  receive-only iMessage channel.
+- Deployed the receive-only boundary to the main `sdqst.fun` production project.
+  A correctly signed synthetic direct-message webhook returned `200 ok` without
+  entering Eve or sending an iMessage.
+- Removed the retired public phone-number setting and unused Parallel keys from
+  the main Vercel project. The separate Photon credentials remain for the future
+  invitation doorway.
+
+### Why
+
+The new invitation has not been designed. An unfinished composer is still a
+fallback, and a prompt is not a strong enough wall. The main product should be
+incapable of producing an old itinerary or a premature replacement until the
+new object, reveal, and output contract are designed together.
+
+### Where we left off
+
+Photon remains the main app's signed iMessage transport, but the product behind
+it is intentionally silent. The next block is to design the invitation system
+from first principles before reconnecting any inbound message to an AI session.
+
+---
+
 ## July 22, 2026 — iMessage returns without the old product
 
 ### What changed
@@ -318,6 +400,13 @@ midnight, so this session is recorded under July 21._
   hierarchy now creates clear visual tiers—defining memory, strong anchors,
   supporting meaning, and contextual detail—without assigning any category a
   hidden size advantage.
+- Gave Moment orbs a restrained eight-percent scale lift after the defining
+  memory still read at roughly the same size as its supporting Place in the
+  rendered scene. Evidence remains the primary sizing signal; the lift only
+  clarifies which nodes are lived moments.
+- Added a quiet top-left legend with the live orb count and only the categories
+  present in the world. User-facing graph language now says `orbs` instead of
+  the technical `nodes` used inside the data model.
 - Added migration-safe optional salience storage for graph rows created before
   this model. Every new memory analysis must supply a calibrated value, while
   legacy rows receive a neutral visual fallback until they are revisited.

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_ORB_RADIUS,
   MIN_ORB_RADIUS,
+  MOMENT_ORB_SCALE,
   SELF_ORB_RADIUS,
   resolveOrbSizes,
 } from "./orbSizing";
@@ -51,16 +52,17 @@ describe("resolveOrbSizes", () => {
     expect(nodes[1].radius).toBeGreaterThan(nodes[0].radius);
   });
 
-  it("does not use category as a hidden size bias", () => {
+  it("gives moments a slight scale lift over equally salient supporting nodes", () => {
     const nodes = resolveOrbSizes(
       [
+        { key: "moment", category: "experience", salience: 0.7 },
         { key: "place", category: "place", salience: 0.7 },
-        { key: "feeling", category: "feeling", salience: 0.7 },
       ],
       [],
     );
 
-    expect(nodes[0].radius).toBe(nodes[1].radius);
+    expect(nodes[0].radius).toBeGreaterThan(nodes[1].radius);
+    expect(nodes[0].radius / nodes[1].radius).toBeCloseTo(MOMENT_ORB_SCALE, 2);
   });
 
   it("keeps every non-self orb inside the designed range", () => {
@@ -72,10 +74,11 @@ describe("resolveOrbSizes", () => {
       [{ from: "large", to: "small", strength: 9 }],
     );
 
-    for (const node of nodes) {
-      expect(node.radius).toBeGreaterThanOrEqual(MIN_ORB_RADIUS);
-      expect(node.radius).toBeLessThanOrEqual(MAX_ORB_RADIUS);
-    }
+    expect(nodes[0].radius).toBeGreaterThanOrEqual(MIN_ORB_RADIUS);
+    expect(nodes[0].radius).toBeLessThanOrEqual(MAX_ORB_RADIUS);
+    expect(nodes[1].radius).toBeLessThanOrEqual(
+      MAX_ORB_RADIUS * MOMENT_ORB_SCALE,
+    );
   });
 
   it("uses a neutral fallback for graph rows created before salience", () => {

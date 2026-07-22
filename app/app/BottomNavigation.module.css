@@ -38,7 +38,7 @@
   --chrome-bottom: max(20px, env(safe-area-inset-bottom));
   --chrome-side: 16px;
   --dock-size: 52px;
-  --logo-size: 108px;
+  --logo-size: 42px;
 
   position: fixed;
   z-index: 20;
@@ -63,14 +63,13 @@
 
 .logo {
   position: absolute;
-  left: 6px;
+  left: 40px;
   /* Vertically center logo with the 52px nav pill */
   bottom: calc((var(--dock-size) - var(--logo-size)) / 2);
   display: block;
   width: var(--logo-size);
   height: var(--logo-size);
   pointer-events: none;
-  object-fit: contain;
 }
 
 .profile {
@@ -84,23 +83,23 @@
   width: var(--profile-size);
   height: var(--profile-size);
   place-items: center;
-  padding: 0;
-  appearance: none;
-  border: 0;
-  border-radius: 50%;
-  background: #000;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-sidequest-sans), system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1;
   pointer-events: auto;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.profile:focus-visible {
+.profileTrigger {
+  width: var(--profile-size);
+  height: var(--profile-size);
+  border-radius: 50%;
+  box-shadow: 0 3px 12px rgba(25, 22, 18, 0.16);
+}
+
+.profileAvatar {
+  width: var(--profile-size);
+  height: var(--profile-size);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+}
+
+.profileTrigger:focus-visible {
   outline: 2px solid #666;
   outline-offset: 2px;
 }

@@ -9,17 +9,15 @@
     "agent:dev": "tsx scripts/with-vercel-oidc.mts eve dev",
     "agent:build": "eve build",
     "agent:info": "eve info",
-    "agent:eval": "tsx scripts/with-vercel-oidc.mts eve eval",
     "agent:gateway:check": "tsx scripts/with-vercel-oidc.mts tsx scripts/verify-ai-gateway.mts",
-    "agent:parallel:check": "tsx scripts/with-vercel-oidc.mts tsx scripts/verify-parallel.ts",
     "lint": "eslint",
     "test": "vitest run"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.22",
     "@spectrum-ts/core": "12.3.0",
     "@spectrum-ts/imessage": "12.3.0",
     "@types/three": "^0.184.1",
-    "@vercel/connect": "0.4.0",
     "ai": "7.0.26",
     "convex": "^1.39.1",
     "eve": "0.26.1",
@@ -31,9 +29,11 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "convex-test": "^0.0.54",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "microsandbox": "^0.5.10",

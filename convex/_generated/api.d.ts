@@ -8,14 +8,8 @@
  * @module
  */
 
-import type * as conversation from "../conversation.js";
-import type * as experienceGraph from "../experienceGraph.js";
-import type * as experienceGraphActions from "../experienceGraphActions.js";
-import type * as location from "../location.js";
-import type * as memory from "../memory.js";
-import type * as onboarding from "../onboarding.js";
-import type * as quests from "../quests.js";
-import type * as users from "../users.js";
+import type * as crons from "../crons.js";
+import type * as messaging from "../messaging.js";
 
 import type {
   ApiFromModules,
@@ -24,14 +18,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  conversation: typeof conversation;
-  experienceGraph: typeof experienceGraph;
-  experienceGraphActions: typeof experienceGraphActions;
-  location: typeof location;
-  memory: typeof memory;
-  onboarding: typeof onboarding;
-  quests: typeof quests;
-  users: typeof users;
+  crons: typeof crons;
+  messaging: typeof messaging;
 }>;
 
 /**

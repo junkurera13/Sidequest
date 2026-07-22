@@ -555,7 +555,8 @@ export default function YouView() {
     const panUp = new THREE.Vector3();
     const panOffset = new THREE.Vector3();
     const pointerCanvasPosition = new THREE.Vector2();
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
+    timer.connect(document);
     const birthEpochMs = window.performance.now();
     const focusWorldPosition = new THREE.Vector3();
     const focusViewDirection = new THREE.Vector3();
@@ -1194,9 +1195,10 @@ export default function YouView() {
     resizeObserver.observe(containerElement);
     resize();
 
-    function render() {
+    function render(timestamp?: number) {
       animationFrame = window.requestAnimationFrame(render);
-      const deltaSeconds = clock.getDelta();
+      timer.update(timestamp);
+      const deltaSeconds = timer.getDelta();
       syncCameraSelection();
 
       if (hasCameraDestination) {
@@ -1425,6 +1427,7 @@ export default function YouView() {
       canvasElement.removeEventListener("wheel", onWheel, true);
       canvasElement.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("pagehide", persistOrbPositions);
+      timer.dispose();
       controls.dispose();
       for (const mesh of meshes.values()) {
         for (const child of mesh.children) {

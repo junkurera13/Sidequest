@@ -1,150 +1,76 @@
 # Sidequest
 
-Sidequest is an agent that composes real-world experiences that feel strangely meant for the person receiving them. It begins as a quiet iMessage relationship and opens into a crafted mobile experience.
+Sidequest is an agent that composes real-world experiences that feel strangely
+meant for the person receiving them. It learns from lived memories, notices the
+relationships and conditions that gave those moments meaning, and creates one
+thoughtful experience rather than another list of recommendations.
 
-The product is being renovated block by block. [VISION.md](./VISION.md) is the source of truth for the new direction; legacy quest and web surfaces remain temporarily while their replacements are built.
+[`VISION.md`](./VISION.md) is the product source of truth.
 
-## Stack
+## What Exists Today
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Convex
-- Eve agent pilot with Vercel AI Gateway
-- OpenRouter and Anthropic support in the existing Convex runtime
-- nanoid
+- `/` — the public landing page.
+- `/app` — the new product shell with **Now**, **You**, and **Together**.
+- **You** — an interactive 3D projection of the current development memory
+  graph. It uses redacted local data until account-scoped graph retrieval exists.
+- `agent/` — the Eve experience-composition agent, its research and
+  verification tools, its iMessage doorway, and the canonical Sidequest output
+  contract.
+- `evals/` — taste and feasibility cases for the agent.
+- `lib/experienceOntology.ts` — the shared language for memories, people,
+  places, activities, feelings, conditions, patterns, and their relationships.
+- `convex/` — a deliberately narrow messaging foundation. It gives signed
+  Spectrum deliveries a stable conversation identity and prevents provider
+  retries from creating duplicate agent turns. The new account-owned memory
+  model has not been chosen yet.
 
-## New Agent Pilot
+The Now and Together views are intentionally blank. They will be built from the
+new product vision rather than inheriting the retired product.
 
-The first contained version of the new experience-composition brain lives under
-`agent/`. It does not replace the current product runtime yet. Its architecture,
-tools, credentials, commands, and tasting suite are documented in
-[`docs/agent-brain.md`](./docs/agent-brain.md).
+## Local Development
 
-## Setup
-
-Install dependencies:
+Use Node 24, then install and start the web app:
 
 ```bash
 npm install
-```
-
-Start Convex:
-
-```bash
-npx convex dev
-```
-
-On the first run, Convex will ask you to log in and create or choose a project. It usually writes `NEXT_PUBLIC_CONVEX_URL` into `.env.local` for the Next.js app.
-
-Add model-provider credentials to Convex, because the quest generation action
-runs inside Convex.
-
-For OpenRouter:
-
-```bash
-npx convex env set LLM_PROVIDER openrouter
-npx convex env set OPENROUTER_API_KEY your_openrouter_key_here
-npx convex env set OPENROUTER_MODEL moonshotai/kimi-k2.6
-```
-
-`OPENROUTER_MODEL` controls both chat/router and quest generation. To split
-them later, set `OPENROUTER_CONVERSATION_MODEL` and/or
-`OPENROUTER_QUEST_MODEL`.
-
-Anthropic is still supported as a fallback:
-
-```bash
-npx convex env set ANTHROPIC_API_KEY your_anthropic_key_here
-```
-
-Quest crafting uses Claude Sonnet 4.6 by default when `LLM_PROVIDER` is unset or
-set to `anthropic`. To override it, set:
-
-```bash
-npx convex env set ANTHROPIC_QUEST_MODEL claude-haiku-4-5-20251001
-```
-
-`ANTHROPIC_QUEST_MODEL` is optional. If unset, the app uses `claude-sonnet-4-6` for quest generation. Cheaper models (Haiku) are used elsewhere for routing and lightweight conversation.
-
-Start Next.js in another terminal:
-
-```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Environment Variables
+Eve is mounted inside the same Next.js app, so local development and future
+Vercel deployments expose the web product and agent together. No persistent
+iMessage worker or separate Railway service is required.
 
-Add these in `.env.local` at the project root:
+## Agent
+
+Eve and Spectrum are pinned exactly because both are fast-moving. The agent
+architecture, iMessage flow, and credentials are documented in
+[`docs/agent-brain.md`](./docs/agent-brain.md).
+
+Useful commands:
 
 ```bash
-NEXT_PUBLIC_CONVEX_URL=your_convex_url_here
-NEXT_PUBLIC_SIDEQUEST_PHONE=+15551234567
+npm run agent:info
+npm run agent:build
+npm run agent:gateway:check
+npm run agent:parallel:check
+npm run agent:dev
+npm run agent:eval -- --list
 ```
 
-`NEXT_PUBLIC_SIDEQUEST_PHONE` is the Photon/iMessage number the landing page button texts. Without it, the homepage shows a `Coming soon` placeholder instead of the live `Text Sidequest` button.
+The Google place and route tools require `GOOGLE_MAPS_API_KEY`. Vercel OIDC and
+the configured Parallel development key are loaded by the local wrapper script.
+Copy `.env.example` to `.env.local` for the local-only values. Never commit real
+secrets.
 
-Add one provider config in Convex with `npx convex env set` or in the Convex
-dashboard:
+## Verification
 
 ```bash
-# OpenRouter
-LLM_PROVIDER=openrouter
-OPENROUTER_API_KEY=your_openrouter_key_here
-OPENROUTER_MODEL=moonshotai/kimi-k2.6
-OPENROUTER_CONVERSATION_MODEL=moonshotai/kimi-k2.6  # optional
-OPENROUTER_REFLECTION_MODEL=your_fast_model          # optional
-OPENROUTER_MEMORY_MODEL=your_strong_model            # optional
-OPENROUTER_QUEST_MODEL=moonshotai/kimi-k2.6         # optional
-
-# Anthropic fallback
-ANTHROPIC_API_KEY=your_anthropic_key_here
-ANTHROPIC_REFLECTION_MODEL=claude-haiku-4-5-20251001 # optional
-ANTHROPIC_MEMORY_MODEL=claude-sonnet-4-6              # optional
-ANTHROPIC_QUEST_MODEL=claude-sonnet-4-6  # optional override; defaults to Sonnet 4.6
+npm run lint
+npm test
+npm run build
+npm run agent:build
 ```
 
 Do not commit real `.env` files.
-
-## Local Test Flow
-
-1. Run `npx convex dev`.
-2. Run `npm run dev` in a second terminal.
-3. Visit [http://localhost:3000](http://localhost:3000).
-4. Paste a request like `I’m free tonight in Seoul, ₩30k budget, solo, surprise me.`
-5. Click `Generate Quest`.
-6. Open the generated `/q/[id]` link.
-
-## iMessage Agent
-
-The fastest iMessage path is a long-running Spectrum agent. It listens for inbound iMessages, generates a quest through Convex, and replies with the public quest link.
-
-Add these to `.env.local` or export them in your shell:
-
-```bash
-PHOTON_PROJECT_ID=your_photon_project_id
-PHOTON_PROJECT_SECRET=your_photon_project_secret
-SIDEQUEST_PUBLIC_BASE_URL=https://your-public-url.example
-```
-
-`SIDEQUEST_PUBLIC_BASE_URL` must be reachable from your phone. For local testing, use an HTTPS tunnel such as ngrok that points to `npm run dev`, or use a deployed Vercel preview later.
-
-Run the agent:
-
-```bash
-npm run imessage:agent
-```
-
-Then send an iMessage to your enabled Photon/Spectrum line. The first reply should be `Case accepted. Mission file incoming.`, followed by the quest link.
-
-## Scripts
-
-```bash
-npm run dev
-npm run imessage:agent
-npm run build
-npm run lint
-npm test
-```

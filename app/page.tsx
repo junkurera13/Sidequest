@@ -6,19 +6,7 @@ import { SidequestWordmark } from "@/components/SidequestWordmark";
 
 import styles from "./page.module.css";
 
-const PREFILLED_MESSAGE = "hey";
-
-function getStartHref() {
-  const phone = process.env.NEXT_PUBLIC_SIDEQUEST_PHONE?.trim();
-
-  return phone
-    ? `sms:${phone}?&body=${encodeURIComponent(PREFILLED_MESSAGE)}`
-    : "/signup";
-}
-
 export default function Home() {
-  const startHref = getStartHref();
-
   return (
     <main className={styles.page}>
       <Image
@@ -44,15 +32,10 @@ export default function Home() {
           Sidequest is an agent that turns a memory and a free afternoon into
           one real-world experience — composed for you, not recommended at you.
         </p>
-        <div className={styles.actions}>
-          <a href={startHref} className={styles.action}>
-            Text Sidequest
-          </a>
-          <Link href="/app" className={styles.appAction}>
-            <span>Open app</span>
-            <span aria-hidden="true">→</span>
-          </Link>
-        </div>
+        <Link href="/app" className={styles.action}>
+          <span>Open App</span>
+          <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </main>
   );

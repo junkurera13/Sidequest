@@ -1,4 +1,4 @@
-import searchWeb from "../agent/tools/search_web.ts";
+import searchWeb from "../agent/tools/search_web";
 
 async function main() {
   if (!process.env.PARALLEL_API_KEY) {

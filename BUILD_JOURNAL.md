@@ -8,6 +8,95 @@ entry first. Git remains the technical history; this file is the product story.
 
 ---
 
+## July 22, 2026 — iMessage returns without the old product
+
+### What changed
+
+- Corrected an over-aggressive part of the cleanup: iMessage is still the first
+  doorway in the new vision, so its transport capability belongs in Sidequest.
+  The old product behavior does not.
+- Rebuilt that doorway instead of restoring the deleted worker:
+  - upgraded from the retired Spectrum package to the current, exactly pinned
+    scoped Spectrum core and iMessage packages;
+  - mounted Eve inside the existing Next.js app so one Vercel project can host
+    the web product, agent, and webhook;
+  - added a signed `POST /eve/v1/spectrum/webhook` channel with raw-body
+    verification, a five-minute replay window, direct-message routing, and calm
+    failure copy;
+  - gave each iMessage conversation a durable Eve continuation token;
+  - replies now leave through Spectrum from Eve lifecycle events.
+- Added two narrow Convex transport tables and functions for stable external
+  threads, transactional webhook/message deduplication, retry leases, and
+  delivery status. These tables do not define the future account, memory, or
+  experience graph model.
+- Synced the additive function surface to the personal Convex development
+  deployment for code generation and type checking. Production was untouched,
+  and no existing remote records were deleted.
+- Extended the agent doctrine with the actual one-message onboarding rhythm:
+  receive one messy lived memory, reflect something specific, then ask when the
+  person has time without exposing the machinery underneath.
+
+### Why this is better
+
+There is no always-on Railway or Docker worker to babysit, no legacy onboarding
+state machine, and no second agent stack. Photon does one job—connect
+iMessage—while Eve owns the conversation and Convex owns the small amount of
+durability required at the boundary.
+
+### Where we left off
+
+The local foundation is built and verified. Before a real message can traverse
+it, the Photon webhook must be registered against the deployed route and its
+one-time signing secret must be added to both Vercel and Convex. The first live
+test should be a direct text conversation; groups and attachment understanding
+remain later blocks.
+
+---
+
+## July 22, 2026 — The old product leaves the building
+
+### What was removed
+
+- Deleted the complete pre-renovation product surface:
+  - pixel-art phone signup and its API route;
+  - public `/q/[id]` mission pages;
+  - the admin quest list, mission printer, and phone-profile inspector;
+  - the Spectrum iMessage and terminal workers;
+  - Photon signup, IP location guessing, the Claude/OpenRouter router,
+    conversation state machine, quest parsing, feedback parsing, and timezone
+    helpers;
+  - Railway and Docker worker deployment files;
+  - old pixel components, fonts, global utilities, favicon, wordmarks, starter
+    assets, and now-unused packages.
+- Removed the landing page's fallback into the retired phone product. Its one
+  action now opens the new web app directly.
+- Removed the old phone-keyed Convex functions and schema from the local code.
+  Convex remains installed as an empty foundation until authentication and
+  account ownership are designed deliberately.
+- No Convex deployment or data deletion was performed. Existing remote data is
+  untouched and must go through an explicit migration before any future schema
+  narrowing is deployed.
+
+### What remains
+
+- The current landing page and its original Fukuoka image.
+- The blank **Now** and **Together** canvases, the finished bottom navigation,
+  and the interactive **You** world.
+- The shared experience ontology, graph validation, display rules, and all
+  relevant tests for the You world.
+- The Eve experience-composition agent, research and verification tools,
+  portable Sidequest contract, and evaluation suite.
+- `VISION.md`, this journal, and the implemented You-world motion plans.
+
+### Where we left off
+
+The repository is now a foundation for the new Sidequest rather than two
+products occupying the same codebase. The next product block should begin from
+the simple, magical invitation idea for **Now**, grounded in real logistics and
+designed as an app experience—not a landing page or an itinerary.
+
+---
+
 ## July 21, 2026 — The renovation begins
 
 _The conversation began late at night and the implementation landed after
